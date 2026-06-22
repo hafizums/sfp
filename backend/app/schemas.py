@@ -24,6 +24,21 @@ SHOT_STATUSES = [
     "Added to final edit",
 ]
 
+SHOT_TAKE_STATUSES = [
+    "Draft",
+    "Ready for review",
+    "Needs redo",
+    "Approved",
+    "Rejected",
+    "Final edit",
+]
+
+SHOT_TAKE_SOURCE_TYPES = [
+    "manual_upload",
+    "future_provider_job",
+    "other",
+]
+
 AssetType = Literal[
     "character_reference",
     "location_reference",
@@ -76,6 +91,9 @@ class ProjectRead(ProjectBase, OrmModel):
     production_bible_locked: bool = False
     quality_review_count: int = 0
     shots_approved_for_final: int = 0
+    take_count: int = 0
+    shots_with_approved_take: int = 0
+    final_edit_readiness_percent: int = 0
 
 
 class StoryInterviewBase(BaseModel):
@@ -353,6 +371,126 @@ class ShotQualityReviewRead(ShotQualityReviewBase, OrmModel):
     shot_id: int
     created_at: datetime
     updated_at: datetime
+
+
+class ShotTakeBase(BaseModel):
+    take_label: str = ""
+    status: str = "Draft"
+    source_type: str = "manual_upload"
+    prompt_snapshot: str = ""
+    negative_prompt_snapshot: str = ""
+    start_frame_asset_id: int | None = None
+    end_frame_asset_id: int | None = None
+    video_asset_id: int | None = None
+    audio_asset_id: int | None = None
+    subtitle_asset_id: int | None = None
+    provider_job_id: str | None = None
+    review_notes: str = ""
+    visual_quality_score: int = Field(0, ge=0, le=5)
+    motion_quality_score: int = Field(0, ge=0, le=5)
+    character_consistency_score: int = Field(0, ge=0, le=5)
+    location_continuity_score: int = Field(0, ge=0, le=5)
+    safety_score: int = Field(0, ge=0, le=5)
+    approved_for_final: bool = False
+    rejected_reason: str = ""
+
+    @field_validator("status")
+    @classmethod
+    def validate_take_status(cls, value: str) -> str:
+        if value not in SHOT_TAKE_STATUSES:
+            raise ValueError(f"status must be one of: {', '.join(SHOT_TAKE_STATUSES)}")
+        return value
+
+    @field_validator("source_type")
+    @classmethod
+    def validate_source_type(cls, value: str) -> str:
+        if value not in SHOT_TAKE_SOURCE_TYPES:
+            raise ValueError(f"source_type must be one of: {', '.join(SHOT_TAKE_SOURCE_TYPES)}")
+        return value
+
+
+class ShotTakeCreate(BaseModel):
+    take_label: str | None = None
+    status: str = "Draft"
+    source_type: str = "manual_upload"
+    prompt_snapshot: str | None = None
+    negative_prompt_snapshot: str | None = None
+    start_frame_asset_id: int | None = None
+    end_frame_asset_id: int | None = None
+    video_asset_id: int | None = None
+    audio_asset_id: int | None = None
+    subtitle_asset_id: int | None = None
+    provider_job_id: str | None = None
+    review_notes: str = ""
+    visual_quality_score: int = Field(0, ge=0, le=5)
+    motion_quality_score: int = Field(0, ge=0, le=5)
+    character_consistency_score: int = Field(0, ge=0, le=5)
+    location_continuity_score: int = Field(0, ge=0, le=5)
+    safety_score: int = Field(0, ge=0, le=5)
+    approved_for_final: bool = False
+    rejected_reason: str = ""
+
+    @field_validator("status")
+    @classmethod
+    def validate_take_status(cls, value: str) -> str:
+        if value not in SHOT_TAKE_STATUSES:
+            raise ValueError(f"status must be one of: {', '.join(SHOT_TAKE_STATUSES)}")
+        return value
+
+    @field_validator("source_type")
+    @classmethod
+    def validate_source_type(cls, value: str) -> str:
+        if value not in SHOT_TAKE_SOURCE_TYPES:
+            raise ValueError(f"source_type must be one of: {', '.join(SHOT_TAKE_SOURCE_TYPES)}")
+        return value
+
+
+class ShotTakeUpdate(BaseModel):
+    take_label: str | None = None
+    status: str | None = None
+    source_type: str | None = None
+    prompt_snapshot: str | None = None
+    negative_prompt_snapshot: str | None = None
+    start_frame_asset_id: int | None = None
+    end_frame_asset_id: int | None = None
+    video_asset_id: int | None = None
+    audio_asset_id: int | None = None
+    subtitle_asset_id: int | None = None
+    provider_job_id: str | None = None
+    review_notes: str | None = None
+    visual_quality_score: int | None = Field(None, ge=0, le=5)
+    motion_quality_score: int | None = Field(None, ge=0, le=5)
+    character_consistency_score: int | None = Field(None, ge=0, le=5)
+    location_continuity_score: int | None = Field(None, ge=0, le=5)
+    safety_score: int | None = Field(None, ge=0, le=5)
+    approved_for_final: bool | None = None
+    rejected_reason: str | None = None
+
+    @field_validator("status")
+    @classmethod
+    def validate_take_status(cls, value: str | None) -> str | None:
+        if value is not None and value not in SHOT_TAKE_STATUSES:
+            raise ValueError(f"status must be one of: {', '.join(SHOT_TAKE_STATUSES)}")
+        return value
+
+    @field_validator("source_type")
+    @classmethod
+    def validate_source_type(cls, value: str | None) -> str | None:
+        if value is not None and value not in SHOT_TAKE_SOURCE_TYPES:
+            raise ValueError(f"source_type must be one of: {', '.join(SHOT_TAKE_SOURCE_TYPES)}")
+        return value
+
+
+class ShotTakeRead(ShotTakeBase, OrmModel):
+    id: int
+    project_id: int
+    shot_id: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class ShotTakeRejectRequest(BaseModel):
+    rejected_reason: str = ""
 
 
 class AudioPlanBase(BaseModel):

@@ -53,7 +53,7 @@ test("Scenario A - basic project planning flow", async ({ page }) => {
   await createShotFromUi(page, "Teamwork solution", 5);
 
   await expect(page.getByText("15s planned | 165s remaining")).toBeVisible();
-  await page.getByLabel("Status").selectOption("Approved");
+    await page.locator("form.shot-detail").getByLabel("Status").first().selectOption("Approved");
   await page.locator("form.shot-detail").getByRole("button", { name: /^Save$/ }).click();
   await expect(page.getByText("33% approved/final")).toBeVisible();
 });
@@ -145,6 +145,49 @@ test("Scenario C - asset upload and preview flow", async ({ page, request }) => 
   await expect(page.getByText("sample.vtt")).toBeHidden();
 });
 
+test("Scenario F - shot takes and approval handoff flow", async ({ page }) => {
+  await page.goto("/");
+
+  const projectTitle = `E2E Shot Takes ${Date.now()}`;
+  const fixturePath = path.resolve(__dirname, "fixtures/sample.vtt");
+  await page.getByLabel("Title").fill(projectTitle);
+  await page.getByRole("button", { name: /create project/i }).click();
+  await expect(page.getByText(projectTitle).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Shots" }).click();
+  await createShotFromUi(page, "Take review shot", 5);
+  await page.getByLabel("Video prompt").fill("gentle magical camera move for take review");
+  await page.getByLabel("Negative prompt").fill("no text, no logos, no scary danger");
+  await page.locator("form.shot-detail").getByRole("button", { name: /^Save$/ }).click();
+
+  await page.getByRole("button", { name: "Assets" }).click();
+  await page.getByLabel("Upload type").selectOption("subtitle");
+  await page.getByLabel("Attach to").first().selectOption({ label: "Shot 1" });
+  await page.locator(".asset-upload-form input[type='file']").setInputFiles(fixturePath);
+  await page.getByLabel("Notes").first().fill("Subtitle used to link manual take");
+  await page.getByRole("button", { name: /upload asset/i }).click();
+  await expect(page.getByText("sample.vtt")).toBeVisible();
+
+  await page.getByRole("button", { name: "Shots" }).click();
+  await expect(page.getByText(/No takes yet/i)).toBeVisible();
+  await page.getByLabel("Subtitle").selectOption({ label: "sample.vtt" });
+  await page.getByRole("button", { name: /create take/i }).click();
+  const takeA = page.locator(".take-card").filter({ hasText: "Take A" });
+  await expect(takeA).toBeVisible();
+  await expect(takeA.getByRole("textbox", { name: "Prompt snapshot", exact: true })).toHaveValue(/gentle magical camera move for take review/);
+  await takeA.getByRole("button", { name: "Approve" }).click();
+  await expect(page.getByRole("heading", { name: "Approved take: Take A" })).toBeVisible();
+
+  await page.getByLabel("Subtitle").first().selectOption({ label: "sample.vtt" });
+  await page.getByRole("button", { name: /create take/i }).click();
+  const takeB = page.locator(".take-card").filter({ hasText: "Take B" });
+  await expect(takeB).toBeVisible();
+  await takeB.getByRole("button", { name: "Approve" }).click();
+  await expect(page.getByRole("heading", { name: "Approved take: Take B" })).toBeVisible();
+  await expect(takeB).toContainText("Approved final take");
+  await expect(takeA).not.toContainText("Approved final take");
+});
+
 test("Scenario D - AI panels safe-state flow", async ({ page, request }) => {
   const project = await createProject(request, `E2E AI Safe ${Date.now()}`);
   await page.goto("/");
@@ -167,6 +210,7 @@ async function createShotFromUi(page: Page, purpose: string, durationSeconds: nu
   await addForm.getByLabel("Duration").fill(String(durationSeconds));
   await addForm.getByRole("button", { name: /add shot/i }).click();
   await expect(page.getByText(purpose).first()).toBeVisible();
+  await expect(addForm.getByLabel("Purpose")).toHaveValue("");
 }
 
 async function resetProjects(request: APIRequestContext) {

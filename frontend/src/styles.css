@@ -515,6 +515,36 @@ button:disabled {
   padding: 14px;
 }
 
+.shot-takes,
+.quality-gate {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #d5ded9;
+  border-radius: 8px;
+  background: #fbfdfb;
+  padding: 14px;
+}
+
+.take-form,
+.take-list {
+  display: grid;
+  gap: 12px;
+}
+
+.take-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #d5ded9;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.take-card.approved {
+  border-color: #176b5c;
+  box-shadow: 0 0 0 2px rgba(23, 107, 92, 0.12);
+}
+
 .success-pill {
   border: 1px solid #badfca;
   border-radius: 999px;

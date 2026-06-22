@@ -3,7 +3,18 @@ import { useEffect, useState } from "react";
 
 import { api } from "../api/client";
 import { buildWanPackage, plannedRuntime, progressFromShots, remainingRuntime } from "../planner";
-import { shotStatuses, type Asset, type Shot, type ShotInput, type ShotQualityReview, type ShotQualityReviewInput } from "../types";
+import {
+  shotStatuses,
+  shotTakeStatuses,
+  type Asset,
+  type Shot,
+  type ShotInput,
+  type ShotQualityReview,
+  type ShotQualityReviewInput,
+  type ShotTake,
+  type ShotTakeCreateInput,
+  type ShotTakeInput,
+} from "../types";
 import { AIShotPromptPanel } from "./AIShotPromptPanel";
 import { AssetPreviewCard } from "./AssetManager";
 
@@ -37,6 +48,7 @@ type Props = {
   onReorder: (shotIds: number[]) => Promise<void>;
   onPromptsApplied: () => Promise<void>;
   onQualityReviewSaved: () => Promise<void>;
+  onTakeChanged: () => Promise<void>;
 };
 
 export function ShotList({
@@ -50,6 +62,7 @@ export function ShotList({
   onReorder,
   onPromptsApplied,
   onQualityReviewSaved,
+  onTakeChanged,
 }: Props) {
   const [selectedId, setSelectedId] = useState<number | null>(shots[0]?.id ?? null);
   const selected = shots.find((shot) => shot.id === selectedId) ?? shots[0];
@@ -146,6 +159,7 @@ export function ShotList({
             onDelete={onDelete}
             onUpdate={onUpdate}
             onQualityReviewSaved={onQualityReviewSaved}
+            onTakeChanged={onTakeChanged}
           />
         ) : (
           <div className="empty-state">Add the first shot to begin the 30-45 shot plan.</div>
@@ -162,6 +176,7 @@ function ShotDetail({
   onUpdate,
   onDelete,
   onQualityReviewSaved,
+  onTakeChanged,
 }: {
   shot: Shot;
   assets: Asset[];
@@ -169,6 +184,7 @@ function ShotDetail({
   onUpdate: (id: number, shot: Partial<ShotInput>) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   onQualityReviewSaved: () => Promise<void>;
+  onTakeChanged: () => Promise<void>;
 }) {
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
   const [draft, setDraft] = useState<ShotInput>({
@@ -266,6 +282,8 @@ function ShotDetail({
       <ShotAssets assets={assets} shot={shot} />
 
       <ShotQualityGate shot={shot} onSaved={onQualityReviewSaved} />
+
+      <ShotTakesSection shot={shot} assets={assets} onChanged={onTakeChanged} />
 
       <section className="prompt-group" aria-label="Wan 2.2 prompt fields">
         <div className="section-heading compact">
@@ -387,6 +405,236 @@ function toQualityInput(review: ShotQualityReview): ShotQualityReviewInput {
     review_notes: review.review_notes,
     approved_for_final: review.approved_for_final,
   };
+}
+
+const emptyTakeDraft: ShotTakeCreateInput = {
+  status: "Draft",
+  source_type: "manual_upload",
+  start_frame_asset_id: null,
+  end_frame_asset_id: null,
+  video_asset_id: null,
+  audio_asset_id: null,
+  subtitle_asset_id: null,
+  review_notes: "",
+  visual_quality_score: 0,
+  motion_quality_score: 0,
+  character_consistency_score: 0,
+  location_continuity_score: 0,
+  safety_score: 0,
+};
+
+function ShotTakesSection({ shot, assets, onChanged }: { shot: Shot; assets: Asset[]; onChanged: () => Promise<void> }) {
+  const [takes, setTakes] = useState<ShotTake[]>([]);
+  const [draft, setDraft] = useState<ShotTakeCreateInput>(emptyTakeDraft);
+  const [copiedTakeId, setCopiedTakeId] = useState<number | null>(null);
+
+  async function refreshTakes() {
+    setTakes(await api.listShotTakes(shot.id));
+  }
+
+  useEffect(() => {
+    void refreshTakes();
+    setDraft(emptyTakeDraft);
+  }, [shot.id]);
+
+  async function createTake() {
+    await api.createShotTake(shot.id, draft);
+    setDraft(emptyTakeDraft);
+    await refreshTakes();
+    await onChanged();
+  }
+
+  async function copySnapshot(take: ShotTake) {
+    await navigator.clipboard.writeText(take.prompt_snapshot);
+    setCopiedTakeId(take.id);
+    window.setTimeout(() => setCopiedTakeId((current) => current === take.id ? null : current), 1500);
+  }
+
+  async function refreshAfter(action: Promise<unknown>) {
+    await action;
+    await refreshTakes();
+    await onChanged();
+  }
+
+  const approvedTake = takes.find((take) => take.approved_for_final);
+
+  return (
+    <section className="shot-takes" aria-label="Shot takes">
+      <div className="section-heading compact">
+        <div>
+          <p className="eyebrow">Takes</p>
+          <h3>{approvedTake ? `Approved take: ${approvedTake.take_label}` : "Shot takes and approvals"}</h3>
+        </div>
+        {approvedTake ? <span className="success-pill">Final take</span> : null}
+      </div>
+
+      <div className="take-form">
+        <div className="form-grid">
+          <label>Status<select value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as ShotTakeInput["status"] })}>{shotTakeStatuses.map((status) => <option key={status}>{status}</option>)}</select></label>
+          <AssetSelect label="Start frame" value={draft.start_frame_asset_id ?? null} assets={assets} onChange={(value) => setDraft({ ...draft, start_frame_asset_id: value })} />
+          <AssetSelect label="End frame" value={draft.end_frame_asset_id ?? null} assets={assets} onChange={(value) => setDraft({ ...draft, end_frame_asset_id: value })} />
+          <AssetSelect label="Generated video" value={draft.video_asset_id ?? null} assets={assets} onChange={(value) => setDraft({ ...draft, video_asset_id: value })} />
+          <AssetSelect label="Audio" value={draft.audio_asset_id ?? null} assets={assets} onChange={(value) => setDraft({ ...draft, audio_asset_id: value })} />
+          <AssetSelect label="Subtitle" value={draft.subtitle_asset_id ?? null} assets={assets} onChange={(value) => setDraft({ ...draft, subtitle_asset_id: value })} />
+        </div>
+        <label>Review notes<textarea value={draft.review_notes ?? ""} onChange={(event) => setDraft({ ...draft, review_notes: event.target.value })} /></label>
+        <button type="button" className="primary" onClick={() => void createTake()}><Plus size={16} /> Create take</button>
+      </div>
+
+      {!takes.length ? (
+        <div className="empty-state">No takes yet. Create Take A after uploading generated assets or before future provider jobs.</div>
+      ) : (
+        <div className="take-list">
+          {takes.map((take) => (
+            <TakeCard
+              key={take.id}
+              take={take}
+              assets={assets}
+              copied={copiedTakeId === take.id}
+              onCopy={() => copySnapshot(take)}
+              onRefresh={refreshAfter}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function TakeCard({
+  take,
+  assets,
+  copied,
+  onCopy,
+  onRefresh,
+}: {
+  take: ShotTake;
+  assets: Asset[];
+  copied: boolean;
+  onCopy: () => Promise<void>;
+  onRefresh: (action: Promise<unknown>) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState<ShotTakeInput>(takeToInput(take));
+
+  useEffect(() => {
+    setDraft(takeToInput(take));
+  }, [take]);
+
+  async function save() {
+    await onRefresh(api.updateShotTake(take.id, draft));
+  }
+
+  async function deleteTake() {
+    if (window.confirm(`Delete ${take.take_label}? Linked assets will stay in the project.`)) {
+      await onRefresh(api.deleteShotTake(take.id));
+    }
+  }
+
+  return (
+    <article className={take.approved_for_final ? "take-card approved" : "take-card"}>
+      <div className="asset-card-heading">
+        <div>
+          <strong>{take.take_label}</strong>
+          <span>{take.status}{take.approved_for_final ? " | Approved final take" : ""}</span>
+        </div>
+        <div className="row-actions">
+          <button type="button" className="ghost" onClick={() => void onRefresh(api.approveShotTake(take.id))}>Approve</button>
+          <button type="button" className="ghost" onClick={() => void onRefresh(api.rejectShotTake(take.id, draft.rejected_reason))}>Reject</button>
+          <button type="button" className="danger" onClick={() => void deleteTake()}>Delete</button>
+        </div>
+      </div>
+
+      <div className="asset-meta">
+        <span>Start: {assetLabelById(assets, take.start_frame_asset_id)}</span>
+        <span>End: {assetLabelById(assets, take.end_frame_asset_id)}</span>
+        <span>Video: {assetLabelById(assets, take.video_asset_id)}</span>
+        <span>Audio: {assetLabelById(assets, take.audio_asset_id)}</span>
+        <span>Subtitle: {assetLabelById(assets, take.subtitle_asset_id)}</span>
+      </div>
+
+      <div className="form-grid">
+        <label>Status<select value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as ShotTakeInput["status"] })}>{shotTakeStatuses.map((status) => <option key={status}>{status}</option>)}</select></label>
+        <AssetSelect label="Start frame" value={draft.start_frame_asset_id} assets={assets} onChange={(value) => setDraft({ ...draft, start_frame_asset_id: value })} />
+        <AssetSelect label="End frame" value={draft.end_frame_asset_id} assets={assets} onChange={(value) => setDraft({ ...draft, end_frame_asset_id: value })} />
+        <AssetSelect label="Generated video" value={draft.video_asset_id} assets={assets} onChange={(value) => setDraft({ ...draft, video_asset_id: value })} />
+        <AssetSelect label="Audio" value={draft.audio_asset_id} assets={assets} onChange={(value) => setDraft({ ...draft, audio_asset_id: value })} />
+        <AssetSelect label="Subtitle" value={draft.subtitle_asset_id} assets={assets} onChange={(value) => setDraft({ ...draft, subtitle_asset_id: value })} />
+        <ScoreInput label="Visual quality" value={draft.visual_quality_score} onChange={(value) => setDraft({ ...draft, visual_quality_score: value })} />
+        <ScoreInput label="Motion quality" value={draft.motion_quality_score} onChange={(value) => setDraft({ ...draft, motion_quality_score: value })} />
+        <ScoreInput label="Character consistency" value={draft.character_consistency_score} onChange={(value) => setDraft({ ...draft, character_consistency_score: value })} />
+        <ScoreInput label="Location continuity" value={draft.location_continuity_score} onChange={(value) => setDraft({ ...draft, location_continuity_score: value })} />
+        <ScoreInput label="Safety" value={draft.safety_score} onChange={(value) => setDraft({ ...draft, safety_score: value })} />
+      </div>
+
+      <label>Review notes<textarea value={draft.review_notes} onChange={(event) => setDraft({ ...draft, review_notes: event.target.value })} /></label>
+      <label>Rejected reason<textarea value={draft.rejected_reason} onChange={(event) => setDraft({ ...draft, rejected_reason: event.target.value })} /></label>
+      <label>Prompt snapshot<textarea value={draft.prompt_snapshot} onChange={(event) => setDraft({ ...draft, prompt_snapshot: event.target.value })} /></label>
+      <label>Negative prompt snapshot<textarea value={draft.negative_prompt_snapshot} onChange={(event) => setDraft({ ...draft, negative_prompt_snapshot: event.target.value })} /></label>
+      <div className="row-actions">
+        <button type="button" className="ghost" onClick={() => void onCopy()}><Copy size={16} /> {copied ? "Copied snapshot" : "Copy prompt snapshot"}</button>
+        <button type="button" className="ghost" onClick={() => void save()}><Save size={16} /> Save take</button>
+      </div>
+    </article>
+  );
+}
+
+function AssetSelect({
+  label,
+  value,
+  assets,
+  onChange,
+}: {
+  label: string;
+  value: number | null;
+  assets: Asset[];
+  onChange: (value: number | null) => void;
+}) {
+  return (
+    <label>{label}<select value={value ?? ""} onChange={(event) => onChange(event.target.value ? Number(event.target.value) : null)}>
+      <option value="">None</option>
+      {assets.map((asset) => <option key={asset.id} value={asset.id}>{assetLabel(asset)}</option>)}
+    </select></label>
+  );
+}
+
+function ScoreInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+  return <label>{label}<input type="number" min={0} max={5} value={value} onChange={(event) => onChange(Number(event.target.value))} /></label>;
+}
+
+function takeToInput(take: ShotTake): ShotTakeInput {
+  return {
+    take_label: take.take_label,
+    status: take.status,
+    source_type: take.source_type,
+    prompt_snapshot: take.prompt_snapshot,
+    negative_prompt_snapshot: take.negative_prompt_snapshot,
+    start_frame_asset_id: take.start_frame_asset_id,
+    end_frame_asset_id: take.end_frame_asset_id,
+    video_asset_id: take.video_asset_id,
+    audio_asset_id: take.audio_asset_id,
+    subtitle_asset_id: take.subtitle_asset_id,
+    provider_job_id: take.provider_job_id,
+    review_notes: take.review_notes,
+    visual_quality_score: take.visual_quality_score,
+    motion_quality_score: take.motion_quality_score,
+    character_consistency_score: take.character_consistency_score,
+    location_continuity_score: take.location_continuity_score,
+    safety_score: take.safety_score,
+    approved_for_final: take.approved_for_final,
+    rejected_reason: take.rejected_reason,
+  };
+}
+
+function assetLabelById(assets: Asset[], assetId: number | null): string {
+  if (!assetId) {
+    return "None";
+  }
+  const asset = assets.find((item) => item.id === assetId);
+  return asset ? assetLabel(asset) : `Asset ${assetId}`;
+}
+
+function assetLabel(asset: Asset): string {
+  return asset.original_filename || asset.filename_or_path || asset.stored_filename || `Asset ${asset.id}`;
 }
 
 function ShotAssets({ assets, shot }: { assets: Asset[]; shot: Shot }) {

@@ -3,11 +3,17 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ShotList } from "./ShotList";
-import type { Asset, Shot } from "../types";
+import type { Asset, Shot, ShotTake } from "../types";
 
 const apiMock = vi.hoisted(() => ({
   getShotQualityReview: vi.fn(),
   saveShotQualityReview: vi.fn(),
+  listShotTakes: vi.fn(),
+  createShotTake: vi.fn(),
+  updateShotTake: vi.fn(),
+  deleteShotTake: vi.fn(),
+  approveShotTake: vi.fn(),
+  rejectShotTake: vi.fn(),
   assetFileUrl: vi.fn(),
 }));
 
@@ -54,6 +60,43 @@ const attachedAsset: Asset = {
   created_at: "2026-01-01T00:00:00Z",
 };
 
+const generatedVideo: Asset = {
+  ...attachedAsset,
+  id: 10,
+  asset_type: "generated_video",
+  filename_or_path: "take-a.mp4",
+  original_filename: "take-a.mp4",
+  stored_filename: "take-a-stored.mp4",
+  notes: "first render",
+};
+
+const take: ShotTake = {
+  id: 20,
+  project_id: 1,
+  shot_id: 1,
+  take_label: "Take A",
+  status: "Ready for review",
+  source_type: "manual_upload",
+  prompt_snapshot: "Video prompt:\ngentle magical camera move",
+  negative_prompt_snapshot: "no violence, no horror",
+  start_frame_asset_id: null,
+  end_frame_asset_id: null,
+  video_asset_id: 10,
+  audio_asset_id: null,
+  subtitle_asset_id: null,
+  provider_job_id: null,
+  review_notes: "Looks close.",
+  visual_quality_score: 3,
+  motion_quality_score: 4,
+  character_consistency_score: 5,
+  location_continuity_score: 4,
+  safety_score: 5,
+  approved_for_final: true,
+  rejected_reason: "",
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z",
+};
+
 describe("ShotList", () => {
   beforeEach(() => {
     apiMock.getShotQualityReview.mockResolvedValue({
@@ -88,6 +131,12 @@ describe("ShotList", () => {
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
     });
+    apiMock.listShotTakes.mockResolvedValue([]);
+    apiMock.createShotTake.mockResolvedValue(take);
+    apiMock.updateShotTake.mockResolvedValue(take);
+    apiMock.deleteShotTake.mockResolvedValue(undefined);
+    apiMock.approveShotTake.mockResolvedValue(take);
+    apiMock.rejectShotTake.mockResolvedValue({ ...take, status: "Rejected", approved_for_final: false });
     apiMock.assetFileUrl.mockImplementation((asset: Asset) => asset.preview_url);
   });
 
@@ -107,6 +156,7 @@ describe("ShotList", () => {
         onReorder={vi.fn()}
         onPromptsApplied={vi.fn()}
         onQualityReviewSaved={vi.fn()}
+        onTakeChanged={vi.fn()}
       />,
     );
 
@@ -130,6 +180,7 @@ describe("ShotList", () => {
         onReorder={vi.fn()}
         onPromptsApplied={vi.fn()}
         onQualityReviewSaved={vi.fn()}
+        onTakeChanged={vi.fn()}
       />,
     );
 
@@ -151,6 +202,7 @@ describe("ShotList", () => {
         onReorder={onReorder}
         onPromptsApplied={vi.fn()}
         onQualityReviewSaved={vi.fn()}
+        onTakeChanged={vi.fn()}
       />,
     );
 
@@ -176,6 +228,7 @@ describe("ShotList", () => {
         onReorder={vi.fn()}
         onPromptsApplied={vi.fn()}
         onQualityReviewSaved={vi.fn()}
+        onTakeChanged={vi.fn()}
       />,
     );
 
@@ -199,10 +252,11 @@ describe("ShotList", () => {
         onReorder={vi.fn()}
         onPromptsApplied={vi.fn()}
         onQualityReviewSaved={vi.fn()}
+        onTakeChanged={vi.fn()}
       />,
     );
 
-    await userEvent.selectOptions(screen.getByLabelText("Status"), "Approved");
+    await userEvent.selectOptions(screen.getAllByLabelText("Status")[0], "Approved");
     await userEvent.click(screen.getByRole("button", { name: /^save$/i }));
 
     expect(onUpdate).toHaveBeenCalledWith(1, expect.objectContaining({ status: "Approved" }));
@@ -221,11 +275,12 @@ describe("ShotList", () => {
         onReorder={vi.fn()}
         onPromptsApplied={vi.fn()}
         onQualityReviewSaved={vi.fn()}
+        onTakeChanged={vi.fn()}
       />,
     );
 
     expect(screen.getByText("Attached assets")).toBeInTheDocument();
-    expect(screen.getByText("start.png")).toBeInTheDocument();
+    expect(screen.getAllByText("start.png")[0]).toBeInTheDocument();
     expect(screen.getByText("approved start frame")).toBeInTheDocument();
   });
 
@@ -243,12 +298,13 @@ describe("ShotList", () => {
         onReorder={vi.fn()}
         onPromptsApplied={vi.fn()}
         onQualityReviewSaved={onQualityReviewSaved}
+        onTakeChanged={vi.fn()}
       />,
     );
 
     await userEvent.clear(await screen.findByLabelText("Character consistency"));
     await userEvent.type(screen.getByLabelText("Character consistency"), "5");
-    await userEvent.type(screen.getByLabelText("Review notes"), "Looks consistent.");
+    await userEvent.type(screen.getAllByLabelText("Review notes")[0], "Looks consistent.");
     await userEvent.click(screen.getByLabelText("Final approval readiness"));
     await userEvent.click(screen.getByRole("button", { name: /save quality gate/i }));
 
@@ -258,5 +314,93 @@ describe("ShotList", () => {
       approved_for_final: true,
     }));
     expect(onQualityReviewSaved).toHaveBeenCalled();
+  });
+
+  it("renders the takes empty state and creates a take", async () => {
+    const onTakeChanged = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ShotList
+        shots={[shot]}
+        assets={[generatedVideo]}
+        targetRuntime={180}
+        projectId={1}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onReorder={vi.fn()}
+        onPromptsApplied={vi.fn()}
+        onQualityReviewSaved={vi.fn()}
+        onTakeChanged={onTakeChanged}
+      />,
+    );
+
+    expect(await screen.findByText(/No takes yet/i)).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByLabelText("Generated video"), "10");
+    await userEvent.click(screen.getByRole("button", { name: /create take/i }));
+
+    expect(apiMock.createShotTake).toHaveBeenCalledWith(1, expect.objectContaining({ video_asset_id: 10 }));
+    expect(onTakeChanged).toHaveBeenCalled();
+  });
+
+  it("renders take list and approve/reject/delete actions", async () => {
+    apiMock.listShotTakes.mockResolvedValue([take]);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(
+      <ShotList
+        shots={[shot]}
+        assets={[generatedVideo]}
+        targetRuntime={180}
+        projectId={1}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onReorder={vi.fn()}
+        onPromptsApplied={vi.fn()}
+        onQualityReviewSaved={vi.fn()}
+        onTakeChanged={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(await screen.findByText("Take A")).toBeInTheDocument();
+    expect(screen.getByText(/Approved final take/i)).toBeInTheDocument();
+    expect(screen.getByText(/Video: take-a.mp4/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Approve" }));
+    await userEvent.click(screen.getByRole("button", { name: "Reject" }));
+    const deleteButtons = screen.getAllByRole("button", { name: "Delete" });
+    await userEvent.click(deleteButtons[deleteButtons.length - 1]);
+
+    expect(apiMock.approveShotTake).toHaveBeenCalledWith(20);
+    expect(apiMock.rejectShotTake).toHaveBeenCalledWith(20, "");
+    expect(confirm).toHaveBeenCalledWith("Delete Take A? Linked assets will stay in the project.");
+    expect(apiMock.deleteShotTake).toHaveBeenCalledWith(20);
+    confirm.mockRestore();
+  });
+
+  it("copies take prompt snapshot with feedback", async () => {
+    apiMock.listShotTakes.mockResolvedValue([take]);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    render(
+      <ShotList
+        shots={[shot]}
+        assets={[generatedVideo]}
+        targetRuntime={180}
+        projectId={1}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onReorder={vi.fn()}
+        onPromptsApplied={vi.fn()}
+        onQualityReviewSaved={vi.fn()}
+        onTakeChanged={vi.fn()}
+      />,
+    );
+
+    await screen.findByText("Take A");
+    await userEvent.click(screen.getByRole("button", { name: /copy prompt snapshot/i }));
+
+    expect(writeText).toHaveBeenCalledWith(take.prompt_snapshot);
+    expect(screen.getByRole("button", { name: /copied snapshot/i })).toBeInTheDocument();
   });
 });

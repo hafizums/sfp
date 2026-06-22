@@ -159,6 +159,9 @@ class Shot(TimestampMixin, Base):
 
     project: Mapped[Project] = relationship(back_populates="shots")
     assets: Mapped[list["Asset"]] = relationship(back_populates="shot", cascade="all, delete-orphan")
+    takes: Mapped[list["ShotTake"]] = relationship(
+        back_populates="shot", cascade="all, delete-orphan", order_by="ShotTake.created_at.desc()"
+    )
 
 
 class Asset(TimestampMixin, Base):
@@ -221,6 +224,41 @@ class ShotQualityReview(TimestampMixin, Base):
 
     project: Mapped[Project] = relationship(back_populates="quality_reviews")
     shot: Mapped[Shot] = relationship()
+
+
+class ShotTake(TimestampMixin, Base):
+    __tablename__ = "shot_takes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    shot_id: Mapped[int] = mapped_column(ForeignKey("shots.id"), index=True)
+    take_label: Mapped[str] = mapped_column(String(80), default="")
+    status: Mapped[str] = mapped_column(String(80), default="Draft")
+    source_type: Mapped[str] = mapped_column(String(80), default="manual_upload")
+    prompt_snapshot: Mapped[str] = mapped_column(Text, default="")
+    negative_prompt_snapshot: Mapped[str] = mapped_column(Text, default="")
+    start_frame_asset_id: Mapped[int | None] = mapped_column(ForeignKey("assets.id"), nullable=True)
+    end_frame_asset_id: Mapped[int | None] = mapped_column(ForeignKey("assets.id"), nullable=True)
+    video_asset_id: Mapped[int | None] = mapped_column(ForeignKey("assets.id"), nullable=True)
+    audio_asset_id: Mapped[int | None] = mapped_column(ForeignKey("assets.id"), nullable=True)
+    subtitle_asset_id: Mapped[int | None] = mapped_column(ForeignKey("assets.id"), nullable=True)
+    provider_job_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    review_notes: Mapped[str] = mapped_column(Text, default="")
+    visual_quality_score: Mapped[int] = mapped_column(Integer, default=0)
+    motion_quality_score: Mapped[int] = mapped_column(Integer, default=0)
+    character_consistency_score: Mapped[int] = mapped_column(Integer, default=0)
+    location_continuity_score: Mapped[int] = mapped_column(Integer, default=0)
+    safety_score: Mapped[int] = mapped_column(Integer, default=0)
+    approved_for_final: Mapped[bool] = mapped_column(Boolean, default=False)
+    rejected_reason: Mapped[str] = mapped_column(Text, default="")
+
+    project: Mapped[Project] = relationship()
+    shot: Mapped[Shot] = relationship(back_populates="takes")
+    start_frame_asset: Mapped[Asset | None] = relationship(foreign_keys=[start_frame_asset_id])
+    end_frame_asset: Mapped[Asset | None] = relationship(foreign_keys=[end_frame_asset_id])
+    video_asset: Mapped[Asset | None] = relationship(foreign_keys=[video_asset_id])
+    audio_asset: Mapped[Asset | None] = relationship(foreign_keys=[audio_asset_id])
+    subtitle_asset: Mapped[Asset | None] = relationship(foreign_keys=[subtitle_asset_id])
 
 
 class AudioPlan(TimestampMixin, Base):

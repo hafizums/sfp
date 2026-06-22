@@ -1,8 +1,8 @@
 # Short Film Planner Studio
 
-Short Film Planner Studio is a private local web app for planning a 3-minute kids adventure AI short film from the first story idea through a locked Production Bible, shot prompts, assets, audio notes, quality gates, and a final readiness checklist.
+Short Film Planner Studio is a private local web app for planning a 3-minute kids adventure AI short film from the first story idea through a locked Production Bible, shot prompts, manual shot takes, assets, audio notes, quality gates, and a final readiness checklist.
 
-Most planning tools are manual, with optional backend-only OpenAI generators for story packages and Wan 2.2 prompt packages. Local asset upload and preview is available for images, videos, audio, subtitles, and conservative text assets. Production Bible and shot quality gates help keep style, continuity, safety, and delivery rules consistent before any real video generation work. The app does not include WaveSpeed, authentication, export, public sharing, payments, collaboration, or a full video editor.
+Most planning tools are manual, with optional backend-only OpenAI generators for story packages and Wan 2.2 prompt packages. Local asset upload and preview is available for images, videos, audio, subtitles, and conservative text assets. Production Bible, shot takes, and shot quality gates help keep style, continuity, safety, and delivery rules consistent before any real video generation work. The app does not include WaveSpeed, authentication, export, public sharing, payments, collaboration, or a full video editor.
 
 ## Tech Stack
 
@@ -61,6 +61,14 @@ Each project has a Production Bible that acts as the source of truth for visual 
 The AI story and Wan 2.2 prompt generators include the Production Bible as context. They do not overwrite the bible.
 
 Each selected shot also has a Production Quality Gate section with 0-5 review scores, notes, and a final approval readiness checkbox. This review layer does not automatically change the shot status yet.
+
+## Shot Takes
+
+Each shot can have multiple takes, such as `Take A`, `Take B`, and `Take C`. A take stores the prompt snapshot used for that attempt, linked start/end/video/audio/subtitle assets, review notes, quality scores, rejection reason, and approval state.
+
+Only one take per shot can be approved for final at a time. Approving a take automatically clears final approval from the other takes for that same shot. Deleting a take does not delete linked assets.
+
+This prepares the workflow for future provider jobs, but WaveSpeed is still not integrated and videos are still uploaded or tracked manually.
 
 ## Backend Setup
 
@@ -162,12 +170,14 @@ npm run build
 11. Reorder shots with the arrow buttons.
 12. Confirm planned runtime and remaining seconds update.
 13. In selected shot detail, fill Production Quality Gate scores and notes, then save.
-14. Copy an image prompt and the Wan 2.2 package.
-15. Change a shot status to `Approved` and save.
-16. Add an asset metadata entry linked to a shot.
-17. Fill and save the audio plan.
-18. Check a final checklist item.
-19. Delete a project only after confirming the browser prompt.
+14. Upload or track a generated video/subtitle asset and create `Take A` from the selected shot.
+15. Approve `Take A`, create `Take B`, then approve `Take B` and confirm `Take A` is no longer final.
+16. Copy an image prompt and the Wan 2.2 package.
+17. Change a shot status to `Approved` and save.
+18. Add an asset metadata entry linked to a shot.
+19. Fill and save the audio plan.
+20. Check a final checklist item.
+21. Delete a project only after confirming the browser prompt.
 
 ## Manual Production Bible and Quality Gate Test
 
@@ -182,6 +192,20 @@ npm run build
 9. Fill Production Quality Gate scores, review notes, and `Final approval readiness`.
 10. Save the quality gate.
 11. Reload the page and confirm the bible lock and shot quality review values persist.
+
+## Manual Shot Takes Test
+
+1. Start the backend and frontend.
+2. Create a project and create one shot.
+3. Fill the shot prompt fields and save the shot.
+4. Upload a generated video, subtitle, or text asset for that shot.
+5. In the shot detail `Takes` section, select the uploaded asset and create `Take A`.
+6. Confirm the take contains a prompt snapshot.
+7. Approve `Take A`.
+8. Create `Take B`.
+9. Approve `Take B`.
+10. Confirm only `Take B` is marked as the approved final take.
+11. Delete a take and confirm linked assets remain in the project.
 
 ## Manual AI Story Package Test
 

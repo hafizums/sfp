@@ -115,6 +115,8 @@ export function Dashboard({ projects, selectedProjectId, onCreate, onUpdate, onD
               <span>{project.progress}% progress</span>
               <span>{project.production_bible_locked ? "Bible locked" : "Bible editable"}</span>
               <span>{project.shots_approved_for_final}/{project.shot_count} final-ready</span>
+              <span>{project.take_count} takes</span>
+              <span>{project.final_edit_readiness_percent}% edit ready</span>
             </div>
             <div className="meter" aria-label={`${project.progress}% progress`}>
               <span style={{ width: `${project.progress}%` }} />

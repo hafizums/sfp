@@ -4,7 +4,7 @@ Last reviewed against milestone `PRODUCTION_BIBLE_AND_QUALITY_GATES_01`.
 
 ## Purpose
 
-Short Film Planner Studio is a private local web app for planning a short kids adventure film. It supports project setup, story planning, a lockable Production Bible, character and location bibles, storyboard shots, copy-ready Wan 2.2 prompts, local asset tracking/upload, shot quality gates, audio notes, and a final checklist.
+Short Film Planner Studio is a private local web app for planning a short kids adventure film. It supports project setup, story planning, a lockable Production Bible, character and location bibles, storyboard shots, copy-ready Wan 2.2 prompts, local asset tracking/upload, manual shot takes, shot quality gates, audio notes, and a final checklist.
 
 The app is not a video generator. WaveSpeed is not integrated.
 
@@ -41,7 +41,7 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 - `frontend/src/components/ProductionBiblePanel.tsx`: source-of-truth production controls, lock/unlock flow, copyable negative prompt rules, and quality gate template.
 - `frontend/src/components/AIStoryPanel.tsx`: backend-only OpenAI story package preview/apply UI.
 - `frontend/src/components/AIShotPromptPanel.tsx`: backend-only OpenAI Wan 2.2 prompt package preview/apply UI.
-- `frontend/src/components/ShotList.tsx`: timeline shot list, shot detail editing, shot quality gate review, prompt copy actions, attached asset previews.
+- `frontend/src/components/ShotList.tsx`: timeline shot list, shot detail editing, shot takes, shot quality gate review, prompt copy actions, attached asset previews.
 - `frontend/src/components/AssetManager.tsx`: local asset upload, metadata tracking, preview cards, delete actions.
 - `frontend/src/planner.ts`: runtime/progress helpers and Wan package text builder.
 - `frontend/src/types.ts`: shared frontend TypeScript types.
@@ -55,6 +55,7 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 - `Location`: location bible, continuity, safety, and negative prompts.
 - `Shot`: storyboard/timeline shot details plus image/start/end/video/negative prompt fields and status.
 - `Asset`: project-level or shot-level asset metadata plus optional uploaded file metadata.
+- `ShotTake`: shot attempt/version metadata, prompt snapshots, linked assets, scores, rejection reason, and final approval state.
 - `ProductionBible`: project-level creative/technical source of truth with lock state.
 - `ShotQualityReview`: shot-level quality gate scores, notes, and final readiness flag.
 - `AudioPlan`: music, sound effects, voiceover, subtitles, and notes.
@@ -67,6 +68,7 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 - Characters: `/api/projects/{project_id}/characters`, `/api/characters/{character_id}`
 - Locations: `/api/projects/{project_id}/locations`, `/api/locations/{location_id}`
 - Shots: `/api/projects/{project_id}/shots`, `/api/shots/{shot_id}`, `/api/projects/{project_id}/shots/reorder`
+- Shot takes: `/api/shots/{shot_id}/takes`, `/api/shot-takes/{take_id}`, `/api/shot-takes/{take_id}/approve`, `/api/shot-takes/{take_id}/reject`
 - Assets: `/api/projects/{project_id}/assets`, `/api/projects/{project_id}/assets/upload`, `/api/assets/{asset_id}`, `/api/assets/{asset_id}/file`
 - Production Bible: `/api/projects/{project_id}/production-bible`, `/api/projects/{project_id}/production-bible/lock`, `/api/projects/{project_id}/production-bible/unlock`
 - Quality reviews: `/api/shots/{shot_id}/quality-review`
@@ -87,8 +89,9 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 8. Apply prompt packages to shot fields.
 9. Copy prompts manually for external tools.
 10. Upload generated assets locally.
-11. Preview assets, complete shot quality gates, and track shot status.
-12. Complete final checklist.
+11. Create shot takes for generated attempts and approve one final take per shot.
+12. Preview assets, complete shot quality gates, and track shot status.
+13. Complete final checklist.
 
 ## AI Features
 
@@ -104,6 +107,16 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 - Project metrics report whether the bible is locked, how many shots have quality reviews, and how many shots are approved for final.
 - Each shot can lazily create a quality review with 0-5 scores for character consistency, location continuity, visual style, motion/camera quality, safety, prompt readiness, and asset readiness.
 - Quality review approval is a review layer only. It does not automatically change shot status.
+
+## Shot Takes
+
+- Shot takes represent generated attempts such as `Take A`, `Take B`, and `Take C`.
+- Takes snapshot current shot prompt fields by default and can link start frame, end frame, generated video, audio, and subtitle assets.
+- Linked assets must belong to the same project, and shot-level assets must be project-level or attached to the same shot.
+- Only one take per shot can be approved for final. Approving a take automatically clears final approval from sibling takes.
+- Rejecting a take stores a rejected reason. Deleting a take leaves linked assets untouched.
+- Provider job fields exist for future integrations, but WaveSpeed and automatic provider polling are not implemented.
+- Project metrics include take count, shots with approved takes, and final edit readiness percentage.
 
 ## Asset Upload Behavior
 
@@ -132,6 +145,7 @@ Backend tests cover:
 - Production Bible default creation, update, lock/unlock, and locked-update failure
 - AI prompt context including Production Bible content
 - shot quality review default creation, update, and invalid-shot errors
+- shot take creation, auto-labeling, prompt snapshots, linked-asset validation, approval handoff, rejection, delete safety, and invalid IDs
 
 Frontend unit tests cover:
 
@@ -141,6 +155,7 @@ Frontend unit tests cover:
 - shot runtime, reorder, status update, copy feedback, attached asset display
 - Production Bible render, lock/unlock behavior, locked fields, save, and negative-rule copy
 - shot quality gate render and update call
+- shot takes empty state, create call, list rendering, approve/reject/delete calls, approved badge, and prompt snapshot copy
 - asset upload form, selectors, preview media, API response rendering, delete confirmation
 
 E2E tests cover:
@@ -150,6 +165,7 @@ E2E tests cover:
 - asset upload/preview/delete flow
 - AI panel safe-state flow without calling OpenAI
 - production bible lock and shot quality gate persistence flow
+- shot take creation, prompt snapshot, approval handoff, and manual asset linking flow
 
 ## Current Limitations
 

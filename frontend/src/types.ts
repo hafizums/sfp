@@ -21,8 +21,25 @@ export const assetTypes = [
   "other",
 ] as const;
 
+export const shotTakeStatuses = [
+  "Draft",
+  "Ready for review",
+  "Needs redo",
+  "Approved",
+  "Rejected",
+  "Final edit",
+] as const;
+
+export const shotTakeSourceTypes = [
+  "manual_upload",
+  "future_provider_job",
+  "other",
+] as const;
+
 export type ShotStatus = (typeof shotStatuses)[number];
 export type AssetType = (typeof assetTypes)[number];
+export type ShotTakeStatus = (typeof shotTakeStatuses)[number];
+export type ShotTakeSourceType = (typeof shotTakeSourceTypes)[number];
 
 export type Project = {
   id: number;
@@ -42,6 +59,9 @@ export type Project = {
   production_bible_locked: boolean;
   quality_review_count: number;
   shots_approved_for_final: number;
+  take_count: number;
+  shots_with_approved_take: number;
+  final_edit_readiness_percent: number;
 };
 
 export type ProjectInput = Omit<
@@ -55,6 +75,9 @@ export type ProjectInput = Omit<
   | "production_bible_locked"
   | "quality_review_count"
   | "shots_approved_for_final"
+  | "take_count"
+  | "shots_with_approved_take"
+  | "final_edit_readiness_percent"
 >;
 
 export type StoryInterview = {
@@ -213,6 +236,37 @@ export type ShotQualityReview = {
 };
 
 export type ShotQualityReviewInput = Omit<ShotQualityReview, "id" | "project_id" | "shot_id" | "created_at" | "updated_at">;
+
+export type ShotTake = {
+  id: number;
+  project_id: number;
+  shot_id: number;
+  take_label: string;
+  status: ShotTakeStatus;
+  source_type: ShotTakeSourceType;
+  prompt_snapshot: string;
+  negative_prompt_snapshot: string;
+  start_frame_asset_id: number | null;
+  end_frame_asset_id: number | null;
+  video_asset_id: number | null;
+  audio_asset_id: number | null;
+  subtitle_asset_id: number | null;
+  provider_job_id: string | null;
+  review_notes: string;
+  visual_quality_score: number;
+  motion_quality_score: number;
+  character_consistency_score: number;
+  location_continuity_score: number;
+  safety_score: number;
+  approved_for_final: boolean;
+  rejected_reason: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ShotTakeInput = Omit<ShotTake, "id" | "project_id" | "shot_id" | "created_at" | "updated_at">;
+
+export type ShotTakeCreateInput = Partial<ShotTakeInput>;
 
 export type AudioPlan = {
   id?: number;

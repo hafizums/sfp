@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import models, schemas
@@ -70,6 +70,13 @@ def enrich_project(project: models.Project) -> schemas.ProjectRead:
     data["production_bible_locked"] = bool(project.production_bible and project.production_bible.locked)
     data["quality_review_count"] = len(project.quality_reviews)
     data["shots_approved_for_final"] = sum(1 for review in project.quality_reviews if review.approved_for_final)
+    takes = [take for shot in project.shots for take in shot.takes]
+    approved_take_shot_ids = {take.shot_id for take in takes if take.approved_for_final}
+    data["take_count"] = len(takes)
+    data["shots_with_approved_take"] = len(approved_take_shot_ids)
+    data["final_edit_readiness_percent"] = (
+        round((len(approved_take_shot_ids) / len(project.shots)) * 100) if project.shots else 0
+    )
     return schemas.ProjectRead(**data)
 
 
@@ -200,6 +207,138 @@ def update_quality_review(
     db.commit()
     db.refresh(review)
     return review
+
+
+def shot_take_or_404(db: Session, take_id: int) -> models.ShotTake:
+    take = db.get(models.ShotTake, take_id)
+    if take is None:
+        raise not_found("Shot take")
+    return take
+
+
+def list_shot_takes(db: Session, shot_id: int) -> list[models.ShotTake]:
+    shot_or_404(db, shot_id)
+    return db.scalars(
+        select(models.ShotTake).where(models.ShotTake.shot_id == shot_id).order_by(models.ShotTake.created_at.desc())
+    ).all()
+
+
+def create_shot_take(db: Session, shot_id: int, payload: schemas.ShotTakeCreate) -> models.ShotTake:
+    shot = shot_or_404(db, shot_id)
+    _validate_take_assets(db, shot, payload)
+    data = payload.model_dump()
+    data["take_label"] = payload.take_label or next_take_label(db, shot_id)
+    data["prompt_snapshot"] = payload.prompt_snapshot if payload.prompt_snapshot is not None else build_take_prompt_snapshot(shot)
+    data["negative_prompt_snapshot"] = (
+        payload.negative_prompt_snapshot if payload.negative_prompt_snapshot is not None else shot.negative_prompt
+    )
+    take = models.ShotTake(project_id=shot.project_id, shot_id=shot.id, **data)
+    db.add(take)
+    db.flush()
+    if take.approved_for_final:
+        _unapprove_other_takes(db, take)
+        take.status = "Approved"
+    db.commit()
+    db.refresh(take)
+    return take
+
+
+def update_shot_take(db: Session, take_id: int, payload: schemas.ShotTakeUpdate) -> models.ShotTake:
+    take = shot_take_or_404(db, take_id)
+    shot = shot_or_404(db, take.shot_id)
+    _validate_take_assets(db, shot, payload)
+    apply_updates(take, payload)
+    if take.approved_for_final:
+        _unapprove_other_takes(db, take)
+        take.status = "Approved"
+    db.commit()
+    db.refresh(take)
+    return take
+
+
+def approve_shot_take(db: Session, take_id: int) -> models.ShotTake:
+    take = shot_take_or_404(db, take_id)
+    _unapprove_other_takes(db, take)
+    take.approved_for_final = True
+    take.status = "Approved"
+    db.commit()
+    db.refresh(take)
+    return take
+
+
+def reject_shot_take(db: Session, take_id: int, rejected_reason: str = "") -> models.ShotTake:
+    take = shot_take_or_404(db, take_id)
+    take.approved_for_final = False
+    take.status = "Rejected"
+    take.rejected_reason = rejected_reason
+    db.commit()
+    db.refresh(take)
+    return take
+
+
+def delete_shot_take(db: Session, take_id: int) -> None:
+    take = shot_take_or_404(db, take_id)
+    db.delete(take)
+    db.commit()
+
+
+def next_take_label(db: Session, shot_id: int) -> str:
+    count = db.scalar(select(func.count(models.ShotTake.id)).where(models.ShotTake.shot_id == shot_id))
+    if count is None:
+        count = 0
+    index = count + 1
+    letters = ""
+    while index:
+        index, remainder = divmod(index - 1, 26)
+        letters = chr(65 + remainder) + letters
+    return f"Take {letters}"
+
+
+def build_take_prompt_snapshot(shot: models.Shot) -> str:
+    return "\n\n".join(
+        [
+            f"Image prompt:\n{shot.image_prompt}",
+            f"Start frame prompt:\n{shot.start_frame_prompt}",
+            f"End frame prompt:\n{shot.end_frame_prompt}",
+            f"Video prompt:\n{shot.video_prompt}",
+        ]
+    ).strip()
+
+
+def _validate_take_assets(
+    db: Session,
+    shot: models.Shot,
+    payload: schemas.ShotTakeCreate | schemas.ShotTakeUpdate,
+) -> None:
+    for field in [
+        "start_frame_asset_id",
+        "end_frame_asset_id",
+        "video_asset_id",
+        "audio_asset_id",
+        "subtitle_asset_id",
+    ]:
+        if field not in payload.model_fields_set:
+            continue
+        asset_id = getattr(payload, field)
+        if asset_id is None:
+            continue
+        asset = db.get(models.Asset, asset_id)
+        if asset is None:
+            raise not_found("Asset")
+        if asset.project_id != shot.project_id:
+            raise HTTPException(status_code=400, detail=f"{field} must belong to this project")
+        if asset.shot_id is not None and asset.shot_id != shot.id:
+            raise HTTPException(status_code=400, detail=f"{field} must be project-level or belong to this shot")
+
+
+def _unapprove_other_takes(db: Session, take: models.ShotTake) -> None:
+    other_takes = db.scalars(
+        select(models.ShotTake).where(models.ShotTake.shot_id == take.shot_id, models.ShotTake.id != take.id)
+    ).all()
+    for other in other_takes:
+        other.approved_for_final = False
+        if other.status == "Approved":
+            other.status = "Ready for review"
 
 
 def next_shot_number(db: Session, project_id: int) -> int:

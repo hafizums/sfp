@@ -298,6 +298,7 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
           onReorder={async (ids) => { setShots(await api.reorderShots(project.id, ids)); await onRefreshProject(); }}
           onPromptsApplied={refreshShotsAndProject}
           onQualityReviewSaved={onRefreshProject}
+          onTakeChanged={onRefreshProject}
         />
       )}
 

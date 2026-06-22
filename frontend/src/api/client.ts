@@ -16,6 +16,9 @@ import type {
   ProductionBibleInput,
   Shot,
   ShotInput,
+  ShotTake,
+  ShotTakeCreateInput,
+  ShotTakeInput,
   ShotQualityReview,
   ShotQualityReviewInput,
   ShotPromptApplyRequest,
@@ -110,6 +113,15 @@ export const api = {
   getShotQualityReview: (shotId: number) => request<ShotQualityReview>(`/shots/${shotId}/quality-review`),
   saveShotQualityReview: (shotId: number, payload: Partial<ShotQualityReviewInput>) =>
     request<ShotQualityReview>(`/shots/${shotId}/quality-review`, { method: "PUT", ...json(payload) }),
+  listShotTakes: (shotId: number) => request<ShotTake[]>(`/shots/${shotId}/takes`),
+  createShotTake: (shotId: number, payload: ShotTakeCreateInput) =>
+    request<ShotTake>(`/shots/${shotId}/takes`, { method: "POST", ...json(payload) }),
+  updateShotTake: (takeId: number, payload: Partial<ShotTakeInput>) =>
+    request<ShotTake>(`/shot-takes/${takeId}`, { method: "PUT", ...json(payload) }),
+  deleteShotTake: (takeId: number) => request<void>(`/shot-takes/${takeId}`, { method: "DELETE" }),
+  approveShotTake: (takeId: number) => request<ShotTake>(`/shot-takes/${takeId}/approve`, { method: "POST" }),
+  rejectShotTake: (takeId: number, rejected_reason: string) =>
+    request<ShotTake>(`/shot-takes/${takeId}/reject`, { method: "POST", ...json({ rejected_reason }) }),
 
   listAssets: (projectId: number) => request<Asset[]>(`/projects/${projectId}/assets`),
   createAsset: (projectId: number, payload: AssetInput) =>
