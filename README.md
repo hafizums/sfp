@@ -2,7 +2,7 @@
 
 Short Film Planner Studio is a private local web app for planning a 3-minute kids adventure AI short film from the first story idea through shot prompts, assets, audio notes, and a final readiness checklist.
 
-This foundation is intentionally manual. It does not include OpenAI, WaveSpeed, authentication, export, public sharing, payments, collaboration, or a full video editor.
+Most planning tools are manual, with one optional backend-only OpenAI story package generator. The app does not include WaveSpeed, authentication, export, public sharing, payments, collaboration, or a full video editor.
 
 ## Tech Stack
 
@@ -49,6 +49,8 @@ Frontend configuration reads `VITE_API_BASE_URL` and defaults to:
 ```text
 http://127.0.0.1:8010/api
 ```
+
+The AI story package generator is backend-only. Set `OPENAI_API_KEY` in the backend environment before using it. `OPENAI_MODEL_STORY` defaults to `gpt-5-mini`.
 
 ## Backend Setup
 
@@ -137,3 +139,18 @@ npm run build
 14. Fill and save the audio plan.
 15. Check a final checklist item.
 16. Delete a project only after confirming the browser prompt.
+
+## Manual AI Story Package Test
+
+1. Set `OPENAI_API_KEY` in the backend shell.
+2. Start the backend and frontend.
+3. Create a project and fill the story interview.
+4. Open the `Story` tab.
+5. Click `Generate Story Package`.
+6. Review the generated preview sections.
+7. Choose which sections to apply.
+8. Leave `Allow overwrite` unchecked to protect existing manual content.
+9. Apply selected sections.
+10. Confirm the story workspace, characters, locations, optional shots, and audio plan updated as expected.
+
+WaveSpeed video generation and final Wan 2.2 prompt generation are not enabled yet.

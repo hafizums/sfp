@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { api } from "../api/client";
+import { AIStoryPanel } from "./AIStoryPanel";
 import { ShotList } from "./ShotList";
 import { assetTypes, type Asset, type AssetInput, type AudioPlan, type Character, type CharacterInput, type ChecklistItem, type Location, type LocationInput, type Project, type ProjectInput, type Shot, type ShotInput, type StoryInterview, type StoryWorkspace } from "../types";
 
@@ -162,6 +163,11 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
     await onRefreshProject();
   }
 
+  async function refreshAllProjectData() {
+    await loadProjectData();
+    await onRefreshProject();
+  }
+
   return (
     <section className="project-workspace">
       <div className="workspace-title">
@@ -222,7 +228,15 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
           hidden={["id", "project_id"]}
           onChange={setWorkspace}
           onSave={() => api.saveWorkspace(project.id, workspace)}
-          extra={<button type="button" disabled>AI generation coming later</button>}
+          extra={
+            <AIStoryPanel
+              projectId={project.id}
+              workspace={workspace}
+              audio={audio}
+              shots={shots}
+              onApplied={refreshAllProjectData}
+            />
+          }
         />
       )}
 

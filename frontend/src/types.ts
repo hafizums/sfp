@@ -159,3 +159,59 @@ export type ChecklistItem = {
   checked: boolean;
   position: number;
 };
+
+export type GeneratedCharacterSuggestion = CharacterInput;
+
+export type GeneratedLocationSuggestion = LocationInput;
+
+export type GeneratedShotSuggestion = {
+  shot_number: number;
+  scene_number: number;
+  duration_seconds: number;
+  purpose: string;
+  camera_framing: string;
+  camera_movement: string;
+  characters_present: string;
+  location_name: string;
+  action: string;
+  emotion: string;
+  notes: string;
+};
+
+export type GeneratedStoryPackage = {
+  logline: string;
+  synopsis: string;
+  three_act_structure: string;
+  cinematic_screenplay: string;
+  simple_dialogue_version: string;
+  voiceover_draft: string;
+  subtitle_draft: string;
+  suggested_characters: GeneratedCharacterSuggestion[];
+  suggested_locations: GeneratedLocationSuggestion[];
+  shot_storyboard: GeneratedShotSuggestion[];
+  audio_plan: {
+    music_prompt: string;
+    sound_effects_list: string;
+  };
+  safety_review: {
+    final_safety_review_notes: string;
+  };
+};
+
+export type StoryPackageApplyRequest = {
+  package: GeneratedStoryPackage;
+  overwrite: boolean;
+  apply_workspace: boolean;
+  apply_characters: boolean;
+  apply_locations: boolean;
+  apply_shots: boolean;
+  apply_audio: boolean;
+};
+
+export type StoryPackageApplyResponse = {
+  applied: string[];
+  skipped: string[];
+  created_characters: number;
+  created_locations: number;
+  created_shots: number;
+};

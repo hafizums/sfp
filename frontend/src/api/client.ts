@@ -5,12 +5,15 @@ import type {
   Character,
   CharacterInput,
   ChecklistItem,
+  GeneratedStoryPackage,
   Location,
   LocationInput,
   Project,
   ProjectInput,
   Shot,
   ShotInput,
+  StoryPackageApplyRequest,
+  StoryPackageApplyResponse,
   StoryInterview,
   StoryWorkspace,
 } from "../types";
@@ -23,7 +26,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...options,
   });
   if (!response.ok) {
-    const message = await response.text();
+    const message = await parseErrorMessage(response);
     throw new Error(message || `Request failed: ${response.status}`);
   }
   if (response.status === 204) {
@@ -33,6 +36,19 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 const json = (body: unknown): RequestInit => ({ body: JSON.stringify(body) });
+
+async function parseErrorMessage(response: Response): Promise<string> {
+  const text = await response.text();
+  try {
+    const parsed = JSON.parse(text) as { detail?: unknown };
+    if (typeof parsed.detail === "string") {
+      return parsed.detail;
+    }
+  } catch {
+    return text;
+  }
+  return text;
+}
 
 export const api = {
   listProjects: () => request<Project[]>("/projects"),
@@ -85,4 +101,12 @@ export const api = {
   getChecklist: (projectId: number) => request<ChecklistItem[]>(`/projects/${projectId}/checklist`),
   updateChecklistItem: (id: number, checked: boolean) =>
     request<ChecklistItem>(`/checklist/${id}`, { method: "PATCH", ...json({ checked }) }),
+
+  previewStoryPackage: (projectId: number) =>
+    request<GeneratedStoryPackage>(`/projects/${projectId}/ai/story-package/preview`, { method: "POST" }),
+  applyStoryPackage: (projectId: number, payload: StoryPackageApplyRequest) =>
+    request<StoryPackageApplyResponse>(`/projects/${projectId}/ai/story-package/apply`, {
+      method: "POST",
+      ...json(payload),
+    }),
 };

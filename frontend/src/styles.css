@@ -420,6 +420,93 @@ button:disabled {
   color: #9d321b;
 }
 
+.ai-panel {
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid #d5ded9;
+  margin-top: 6px;
+  padding-top: 18px;
+}
+
+.muted-note,
+.warning-note,
+.success-note {
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.muted-note {
+  background: #eef5f2;
+  color: #516064;
+}
+
+.warning-note {
+  background: #fff7e6;
+  color: #7a4a0d;
+}
+
+.success-note {
+  background: #ecf8ef;
+  color: #176b36;
+}
+
+.ai-preview {
+  display: grid;
+  gap: 14px;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.preview-block {
+  border: 1px solid #d5ded9;
+  border-radius: 8px;
+  background: #f8faf8;
+  padding: 12px;
+}
+
+.preview-block p {
+  color: #455258;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.suggestion-strip,
+.apply-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.suggestion-strip span {
+  border-radius: 999px;
+  background: #eef5f2;
+  padding: 6px 10px;
+  color: #516064;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.inline-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d5ded9;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px 10px;
+}
+
+.inline-choice input {
+  width: 16px;
+  height: 16px;
+}
+
 @media (max-width: 820px) {
   main {
     padding: 16px;
