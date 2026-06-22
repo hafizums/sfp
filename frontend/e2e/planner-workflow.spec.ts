@@ -1,0 +1,170 @@
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import path from "node:path";
+
+const API_BASE = "http://127.0.0.1:8011/api";
+
+test.beforeEach(async ({ request }) => {
+  await resetProjects(request);
+});
+
+test("Scenario A - basic project planning flow", async ({ page }) => {
+  await page.goto("/");
+
+  const projectTitle = `E2E Planning ${Date.now()}`;
+  await page.getByLabel("Title").fill(projectTitle);
+  await page.getByLabel("Visual style").fill("bright storybook 3D");
+  await page.getByRole("button", { name: /create project/i }).click();
+
+  await expect(page.getByText(projectTitle).first()).toBeVisible();
+  await expect(page.getByLabel("Production workflow")).toContainText("Create project");
+  await expect(page.getByRole("button", { name: "Interview" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Shots" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Interview" }).click();
+  await page.getByLabel("What is the title?").fill("The E2E Moon Map");
+  await page.getByLabel("What is the magical discovery?").fill("A glowing compass");
+  await page.getByLabel("Who are the main kid characters?").fill("Mia and Jo");
+  await page.getByLabel("Where does the adventure begin?").fill("A backyard treehouse");
+  await page.getByLabel("What is the main adventure location?").fill("A floating garden");
+  await page.getByLabel("What small problem happens?").fill("The garden lights get mixed up");
+  await page.getByLabel("How do the kids solve it together?").fill("They match colors and sing together");
+  await page.getByLabel("What should the ending feel like?").fill("Warm and proud");
+  await page.getByLabel("What visual style should the film use?").fill("Soft miniature storybook");
+  await page.getByLabel("What should the film avoid?").fill("Anything scary");
+  await page.getByRole("button", { name: "Save" }).click();
+
+  await page.getByRole("button", { name: "Characters" }).click();
+  await page.getByLabel("Name").fill("Mia");
+  await page.getByLabel("Role").fill("curious inventor");
+  await page.getByLabel("Age").fill("7");
+  await page.getByRole("button", { name: /add character/i }).click();
+  await expect(page.locator(".resource-card").getByLabel("Role")).toHaveValue("curious inventor");
+
+  await page.getByRole("button", { name: "Locations" }).click();
+  await page.getByLabel("Name").fill("Floating Garden");
+  await page.getByLabel("Mood").fill("wonder");
+  await page.getByLabel("Lighting").fill("golden afternoon");
+  await page.getByRole("button", { name: /add location/i }).click();
+  await expect(page.locator(".resource-card").getByLabel("Lighting")).toHaveValue("golden afternoon");
+
+  await page.getByRole("button", { name: "Shots" }).click();
+  await createShotFromUi(page, "Opening wonder", 5);
+  await createShotFromUi(page, "Garden reveal", 5);
+  await createShotFromUi(page, "Teamwork solution", 5);
+
+  await expect(page.getByText("15s planned | 165s remaining")).toBeVisible();
+  await page.getByLabel("Status").selectOption("Approved");
+  await page.locator("form.shot-detail").getByRole("button", { name: /^Save$/ }).click();
+  await expect(page.getByText("33% approved/final")).toBeVisible();
+});
+
+test("Scenario B - shot prompt copy flow", async ({ page, request }) => {
+  await installClipboardStub(page);
+  const project = await createProject(request, `E2E Copy ${Date.now()}`);
+  await createShot(request, project.id, {
+    purpose: "Open the glowing door",
+    image_prompt: "storybook treehouse",
+    start_frame_prompt: "Mia reaches for a glowing door",
+    end_frame_prompt: "The doorway reveals floating lights",
+    video_prompt: "gentle magical camera move",
+    negative_prompt: "no violence, no horror",
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Shots" }).click();
+
+  await page.getByLabel("Wan 2.2 prompt fields").getByRole("button", { name: "Copy" }).first().click();
+  await expect(page.getByText("Image prompt copied")).toBeVisible();
+
+  await page.getByRole("button", { name: /copy wan 2.2 package/i }).click();
+  await expect(page.getByText("Wan package copied")).toBeVisible();
+});
+
+test("Scenario C - asset upload and preview flow", async ({ page, request }) => {
+  const project = await createProject(request, `E2E Asset ${Date.now()}`);
+  const shot = await createShot(request, project.id, { purpose: "Asset shot" });
+  const fixturePath = path.resolve(__dirname, "fixtures/sample.vtt");
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Assets" }).click();
+  await page.getByLabel("Upload type").selectOption("subtitle");
+  await page.getByLabel("Attach to").first().selectOption(String(shot.id));
+  await page.locator(".asset-upload-form input[type='file']").setInputFiles(fixturePath);
+  await page.getByLabel("Notes").first().fill("E2E subtitle asset");
+  await page.getByRole("button", { name: /upload asset/i }).click();
+
+  await expect(page.getByText("sample.vtt")).toBeVisible();
+  await expect(page.getByText("text/vtt")).toBeVisible();
+  await expect(page.getByText("Shot 1: Asset shot")).toBeVisible();
+  await expect(page.getByRole("link", { name: /open file/i })).toBeVisible();
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator(".asset-card").getByRole("button", { name: /delete/i }).click();
+  await expect(page.getByText("sample.vtt")).toBeHidden();
+});
+
+test("Scenario D - AI panels safe-state flow", async ({ page, request }) => {
+  const project = await createProject(request, `E2E AI Safe ${Date.now()}`);
+  await page.goto("/");
+  await expect(page.getByText(project.title).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Story" }).click();
+  await expect(page.getByLabel("AI story package generator")).toBeVisible();
+  await expect(page.getByText(/uses your backend openai key only/i)).toBeVisible();
+  await expect(page.getByText(/wavespeed video generation is not enabled yet/i)).toBeVisible();
+
+  await page.getByRole("button", { name: "Shots" }).click();
+  await expect(page.getByLabel("AI Wan 2.2 prompt generator")).toBeVisible();
+  await expect(page.getByText(/add storyboard shots before generating/i)).toBeVisible();
+  await expect(page.getByRole("button", { name: /generate wan 2.2 prompts/i })).toBeDisabled();
+});
+
+async function createShotFromUi(page: Page, purpose: string, durationSeconds: number) {
+  const addForm = page.locator("form.shot-add");
+  await addForm.getByLabel("Purpose").fill(purpose);
+  await addForm.getByLabel("Duration").fill(String(durationSeconds));
+  await addForm.getByRole("button", { name: /add shot/i }).click();
+  await expect(page.getByText(purpose).first()).toBeVisible();
+}
+
+async function resetProjects(request: APIRequestContext) {
+  const response = await request.get(`${API_BASE}/projects`);
+  if (!response.ok()) {
+    return;
+  }
+  const projects = await response.json() as { id: number }[];
+  for (const project of projects) {
+    await request.delete(`${API_BASE}/projects/${project.id}`);
+  }
+}
+
+async function createProject(request: APIRequestContext, title: string) {
+  const response = await request.post(`${API_BASE}/projects`, { data: { title } });
+  expect(response.ok()).toBeTruthy();
+  return await response.json() as { id: number; title: string };
+}
+
+async function createShot(
+  request: APIRequestContext,
+  projectId: number,
+  data: Record<string, string | number>,
+) {
+  const response = await request.post(`${API_BASE}/projects/${projectId}/shots`, {
+    data: { duration_seconds: 5, ...data },
+  });
+  expect(response.ok()).toBeTruthy();
+  return await response.json();
+}
+
+async function installClipboardStub(page: Page) {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        writeText: async (text: string) => {
+          window.localStorage.setItem("e2e:lastClipboard", text);
+        },
+      },
+      configurable: true,
+    });
+  });
+}

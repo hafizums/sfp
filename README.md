@@ -110,6 +110,22 @@ cd frontend
 npm test
 ```
 
+## E2E Tests
+
+Playwright E2E tests start an isolated backend and frontend automatically:
+
+- Backend: `http://127.0.0.1:8011`
+- Frontend: `http://127.0.0.1:5173`
+- Database: `backend/e2e_short_film_planner.db`
+- Uploads: `backend/uploads-e2e/`
+
+The E2E suite does not call OpenAI or WaveSpeed.
+
+```bash
+cd frontend
+npm run test:e2e
+```
+
 ## Build Frontend
 
 ```bash

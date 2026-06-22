@@ -4,8 +4,12 @@ __pycache__/
 .env
 
 backend/short_film_planner.db
+backend/e2e_short_film_planner.db
 backend/uploads/
+backend/uploads-e2e/
 
 frontend/node_modules/
 frontend/dist/
 frontend/*.tsbuildinfo
+frontend/playwright-report/
+frontend/test-results/
