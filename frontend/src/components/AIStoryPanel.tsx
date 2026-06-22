@@ -1,5 +1,5 @@
 import { Sparkles, Save } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { api } from "../api/client";
 import type {
@@ -26,6 +26,27 @@ const defaultChoices: ApplyChoices = {
   apply_audio: true,
 };
 
+type Operation = "generate" | "apply" | null;
+
+const generateSteps = [
+  "Preparing story interview",
+  "Sending structured prompt to backend",
+  "Waiting for OpenAI response",
+  "Validating generated story package",
+  "Preparing preview",
+];
+
+const applySteps = [
+  "Checking overwrite settings",
+  "Saving story workspace",
+  "Creating selected characters, locations, and shots",
+  "Saving audio plan",
+  "Refreshing project data",
+];
+
+const GENERATE_TIMEOUT_SECONDS = 120;
+const APPLY_TIMEOUT_SECONDS = 12;
+
 type Props = {
   projectId: number;
   workspace: StoryWorkspace;
@@ -35,7 +56,8 @@ type Props = {
 };
 
 export function AIStoryPanel({ projectId, workspace, audio, shots, onApplied }: Props) {
-  const [loading, setLoading] = useState(false);
+  const [operation, setOperation] = useState<Operation>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<GeneratedStoryPackage | null>(null);
   const [choices, setChoices] = useState<ApplyChoices>(defaultChoices);
@@ -43,9 +65,22 @@ export function AIStoryPanel({ projectId, workspace, audio, shots, onApplied }: 
   const [applyResult, setApplyResult] = useState<StoryPackageApplyResponse | null>(null);
 
   const hasExistingContent = hasWorkspaceContent(workspace) || hasAudioContent(audio) || shots.length > 0;
+  const loading = operation !== null;
+
+  useEffect(() => {
+    if (!operation) {
+      setElapsedSeconds(0);
+      return;
+    }
+    const startedAt = Date.now();
+    const intervalId = window.setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    }, 500);
+    return () => window.clearInterval(intervalId);
+  }, [operation]);
 
   async function generatePreview() {
-    setLoading(true);
+    setOperation("generate");
     setError(null);
     setApplyResult(null);
     try {
@@ -53,7 +88,7 @@ export function AIStoryPanel({ projectId, workspace, audio, shots, onApplied }: 
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to generate story package.");
     } finally {
-      setLoading(false);
+      setOperation(null);
     }
   }
 
@@ -64,7 +99,7 @@ export function AIStoryPanel({ projectId, workspace, audio, shots, onApplied }: 
     if (overwrite && hasExistingContent && !window.confirm("Overwrite existing story, audio, or shot content?")) {
       return;
     }
-    setLoading(true);
+    setOperation("apply");
     setError(null);
     try {
       const result = await api.applyStoryPackage(projectId, {
@@ -77,7 +112,7 @@ export function AIStoryPanel({ projectId, workspace, audio, shots, onApplied }: 
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to apply story package.");
     } finally {
-      setLoading(false);
+      setOperation(null);
     }
   }
 
@@ -95,6 +130,7 @@ export function AIStoryPanel({ projectId, workspace, audio, shots, onApplied }: 
 
       <p className="muted-note">WaveSpeed video generation is not enabled yet.</p>
       {hasExistingContent ? <p className="warning-note">Existing story, audio, or shot content found. Overwrites require confirmation.</p> : null}
+      {operation ? <ProgressLoader operation={operation} elapsedSeconds={elapsedSeconds} /> : null}
       {error ? <div className="app-error">{error}</div> : null}
 
       {preview ? (
@@ -141,6 +177,48 @@ export function AIStoryPanel({ projectId, workspace, audio, shots, onApplied }: 
       ) : null}
     </section>
   );
+}
+
+function ProgressLoader({ operation, elapsedSeconds }: { operation: Exclude<Operation, null>; elapsedSeconds: number }) {
+  const steps = operation === "generate" ? generateSteps : applySteps;
+  const timeoutSeconds = operation === "generate" ? GENERATE_TIMEOUT_SECONDS : APPLY_TIMEOUT_SECONDS;
+  const currentIndex = currentStepIndex(elapsedSeconds, steps.length, timeoutSeconds);
+  const progress = Math.min(95, Math.max(8, Math.round((elapsedSeconds / timeoutSeconds) * 88)));
+
+  return (
+    <div className="progress-loader" role="status" aria-live="polite">
+      <div className="progress-header">
+        <strong>{steps[currentIndex]}</strong>
+        <span>{elapsedSeconds}s elapsed</span>
+      </div>
+      <div className="progress-track" aria-label={`${progress}% progress`}>
+        <span style={{ width: `${progress}%` }} />
+      </div>
+      <ol className="progress-steps">
+        {steps.map((step, index) => (
+          <li key={step} className={index < currentIndex ? "done" : index === currentIndex ? "active" : ""}>
+            <span>{index + 1}</span>
+            {step}
+          </li>
+        ))}
+      </ol>
+      <p className="progress-hint">
+        {operation === "generate"
+          ? "OpenAI generation is a single backend request, so progress is staged until the structured response returns. Large story packages can take up to two minutes."
+          : "Applying selected sections locally to the project database."}
+      </p>
+    </div>
+  );
+}
+
+function currentStepIndex(elapsedSeconds: number, stepCount: number, timeoutSeconds: number): number {
+  if (elapsedSeconds <= 1) {
+    return 0;
+  }
+  if (elapsedSeconds >= timeoutSeconds - 3) {
+    return stepCount - 1;
+  }
+  return Math.min(stepCount - 2, Math.floor((elapsedSeconds / timeoutSeconds) * (stepCount - 1)) + 1);
 }
 
 function PreviewBlock({ title, content }: { title: string; content: string }) {

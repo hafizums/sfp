@@ -132,6 +132,8 @@ describe("AIStoryPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: /generate story package/i }));
 
     expect(screen.getByRole("button", { name: /generating/i })).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent("Preparing story interview");
+    expect(screen.getByText(/OpenAI generation is a single backend request/i)).toBeInTheDocument();
   });
 
   it("renders preview sections", async () => {

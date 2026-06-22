@@ -50,7 +50,7 @@ Frontend configuration reads `VITE_API_BASE_URL` and defaults to:
 http://127.0.0.1:8010/api
 ```
 
-The AI story package generator is backend-only. Set `OPENAI_API_KEY` in the backend environment before using it. `OPENAI_MODEL_STORY` defaults to `gpt-5-mini`.
+The AI story package generator is backend-only. Set `OPENAI_API_KEY` in the backend environment before using it. `OPENAI_MODEL_STORY` defaults to `gpt-5-mini`, and `OPENAI_STORY_TIMEOUT_SECONDS` defaults to `120`.
 
 ## Backend Setup
 

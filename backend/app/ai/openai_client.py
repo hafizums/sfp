@@ -32,12 +32,14 @@ class OpenAIStoryPackageClient:
                 detail="OpenAI SDK is not installed on the backend.",
             ) from exc
 
-        client = OpenAI(api_key=self.settings.openai_api_key, timeout=60.0)
+        timeout_seconds = self.settings.openai_story_timeout_seconds
+        client = OpenAI(api_key=self.settings.openai_api_key, timeout=timeout_seconds)
         schema = GeneratedStoryPackage.model_json_schema()
 
         try:
             response = client.responses.create(
                 model=self.settings.openai_model_story,
+                max_output_tokens=12000,
                 input=[
                     {
                         "role": "system",
@@ -53,9 +55,13 @@ class OpenAIStoryPackageClient:
                         "strict": False,
                     }
                 },
+                timeout=timeout_seconds,
             )
         except APITimeoutError as exc:
-            raise HTTPException(status_code=504, detail="OpenAI request timed out.") from exc
+            raise HTTPException(
+                status_code=504,
+                detail=f"OpenAI request timed out after {int(timeout_seconds)} seconds.",
+            ) from exc
         except APIConnectionError as exc:
             raise HTTPException(status_code=502, detail="Could not connect to OpenAI.") from exc
         except APIStatusError as exc:
