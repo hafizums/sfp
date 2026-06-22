@@ -16,7 +16,7 @@ test("Scenario A - basic project planning flow", async ({ page }) => {
   await page.getByRole("button", { name: /create project/i }).click();
 
   await expect(page.getByText(projectTitle).first()).toBeVisible();
-  await expect(page.getByLabel("Production workflow")).toContainText("Create project");
+  await expect(page.getByLabel("Production workflow")).toContainText("Add story context");
   await expect(page.getByRole("button", { name: "Interview" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Shots" })).toBeVisible();
 
@@ -53,7 +53,7 @@ test("Scenario A - basic project planning flow", async ({ page }) => {
   await createShotFromUi(page, "Teamwork solution", 5);
 
   await expect(page.getByText("15s planned | 165s remaining")).toBeVisible();
-    await page.locator("form.shot-detail").getByLabel("Status").first().selectOption("Approved");
+  await page.locator("form.shot-detail").getByLabel("Status").first().selectOption("Approved");
   await page.locator("form.shot-detail").getByRole("button", { name: /^Save$/ }).click();
   await expect(page.getByText("33% approved/final")).toBeVisible();
 });
@@ -202,6 +202,37 @@ test("Scenario D - AI panels safe-state flow", async ({ page, request }) => {
   await expect(page.getByLabel("AI Wan 2.2 prompt generator")).toBeVisible();
   await expect(page.getByText(/add storyboard shots before generating/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /generate wan 2.2 prompts/i })).toBeDisabled();
+});
+
+test("Scenario G - manual story start without interview", async ({ page }) => {
+  await installClipboardStub(page);
+  await page.goto("/");
+
+  const projectTitle = `E2E Manual Start ${Date.now()}`;
+  await page.getByLabel("Title").fill(projectTitle);
+  await page.getByRole("button", { name: /create project/i }).click();
+  await expect(page.getByText(projectTitle).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Story" }).click();
+  const storyPanel = page.getByLabel("AI story package generator");
+  await expect(storyPanel).toBeVisible();
+  await expect(storyPanel.getByText(/manual story text, production bible, characters, locations, or existing shots/i)).toBeVisible();
+  await page.getByLabel("Logline").fill("Two cousins follow a glowing kite to a gentle sky garden.");
+  await page.getByLabel("Synopsis").fill("They work together to guide sleepy star flowers home.");
+  await page.getByRole("button", { name: "Save" }).click();
+
+  await page.getByRole("button", { name: "Shots" }).click();
+  await createShotFromUi(page, "Manual story opening", 5);
+  await page.getByLabel("Image prompt").fill("bright 16:9 storybook frame of cousins with a glowing kite");
+  await page.getByLabel("Start frame prompt").fill("The kite glows softly beside the cousins");
+  await page.getByLabel("End frame prompt").fill("A sky garden appears beyond soft clouds");
+  await page.getByLabel("Video prompt").fill("Gentle push forward as the kite floats toward the sky garden");
+  await page.getByLabel("Negative prompt").fill("no text, no logos, no scary danger");
+  await page.locator("form.shot-detail").getByRole("button", { name: /^Save$/ }).click();
+
+  await expect(page.getByLabel("AI Wan 2.2 prompt generator")).toContainText("guided interview is not required");
+  await page.getByRole("button", { name: /copy wan 2.2 package/i }).click();
+  await expect(page.getByText("Wan package copied")).toBeVisible();
 });
 
 async function createShotFromUi(page: Page, purpose: string, durationSeconds: number) {

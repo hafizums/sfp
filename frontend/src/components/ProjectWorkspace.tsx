@@ -96,12 +96,13 @@ const tabs = ["Setup", "Interview", "Story", "Production Bible", "Characters", "
 type Tab = (typeof tabs)[number];
 
 const workflowSteps = [
-  "Create project",
-  "Fill interview",
-  "Generate story",
-  "Review boards",
+  "Setup",
+  "Add story context",
+  "Build bible",
+  "Plan shots",
   "Generate prompts",
   "Upload assets",
+  "Review takes",
   "Finalize",
 ];
 
@@ -229,6 +230,7 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
           hidden={["id", "project_id"]}
           onChange={setInterview}
           onSave={() => api.saveStoryInterview(project.id, interview)}
+          helper="Optional guided interview. You can skip this if you already have a story or shot list."
         />
       )}
 
@@ -240,7 +242,7 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
           hidden={["id", "project_id"]}
           onChange={setWorkspace}
           onSave={() => api.saveWorkspace(project.id, workspace)}
-          helper="Draft or refine the story here. The AI package can fill this from the interview, then you can edit anything manually."
+          helper="Draft or refine the story here. You can generate from interview, manual story text, production bible, characters, locations, or existing shots."
           extra={
             <AIStoryPanel
               projectId={project.id}

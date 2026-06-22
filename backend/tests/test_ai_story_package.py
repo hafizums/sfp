@@ -121,12 +121,95 @@ def test_missing_openai_key_returns_clean_error() -> None:
         raise AssertionError("Expected missing OpenAI key to raise HTTPException")
 
 
-def test_preview_endpoint_validates_interview_exists(client: TestClient) -> None:
-    project = create_project(client)
+def test_preview_endpoint_returns_clean_error_without_meaningful_context(client: TestClient) -> None:
+    project = create_project(client, "Untitled")
     client.app.dependency_overrides[get_story_package_provider] = lambda: FakeProvider()
     response = client.post(f"/api/projects/{project['id']}/ai/story-package/preview")
     assert response.status_code == 400
-    assert "Story interview" in response.json()["detail"]
+    assert response.json()["detail"] == (
+        "Add story context first: fill the interview, write in the story workspace, add shots, or update the Production Bible."
+    )
+
+
+def test_preview_works_with_interview_answers(client: TestClient) -> None:
+    project = create_project(client, "Untitled")
+    save_interview(client, project["id"])
+    provider = FakeProvider()
+    client.app.dependency_overrides[get_story_package_provider] = lambda: provider
+
+    response = client.post(f"/api/projects/{project['id']}/ai/story-package/preview")
+
+    assert response.status_code == 200
+    assert "Guided interview answers" in provider.prompt
+    assert "glows with moonlight" in provider.prompt
+
+
+def test_preview_works_with_only_story_workspace_content(client: TestClient) -> None:
+    project = create_project(client, "Untitled")
+    client.put(
+        f"/api/projects/{project['id']}/workspace",
+        json={"logline": "Two cousins find a gentle moon map in the attic."},
+    )
+    provider = FakeProvider()
+    client.app.dependency_overrides[get_story_package_provider] = lambda: provider
+
+    response = client.post(f"/api/projects/{project['id']}/ai/story-package/preview")
+
+    assert response.status_code == 200
+    assert "Story workspace" in provider.prompt
+    assert "moon map" in provider.prompt
+    assert "No guided interview answers saved." in provider.prompt
+
+
+def test_preview_works_with_existing_shots_and_no_interview(client: TestClient) -> None:
+    project = create_project(client, "Untitled")
+    client.post(
+        f"/api/projects/{project['id']}/shots",
+        json={
+            "duration_seconds": 6,
+            "purpose": "The kids discover a tiny glowing bridge",
+            "action": "They step carefully together",
+        },
+    )
+    provider = FakeProvider()
+    client.app.dependency_overrides[get_story_package_provider] = lambda: provider
+
+    response = client.post(f"/api/projects/{project['id']}/ai/story-package/preview")
+
+    assert response.status_code == 200
+    assert "Existing characters, locations, and shots" in provider.prompt
+    assert "tiny glowing bridge" in provider.prompt
+
+
+def test_preview_works_with_production_bible_context(client: TestClient) -> None:
+    project = create_project(client, "Untitled")
+    client.put(
+        f"/api/projects/{project['id']}/production-bible",
+        json={
+            "visual_style": "handmade felt miniature sets",
+            "camera_language": "gentle locked-off storybook shots",
+        },
+    )
+    provider = FakeProvider()
+    client.app.dependency_overrides[get_story_package_provider] = lambda: provider
+
+    response = client.post(f"/api/projects/{project['id']}/ai/story-package/preview")
+
+    assert response.status_code == 200
+    assert "Production Bible" in provider.prompt
+    assert "handmade felt miniature sets" in provider.prompt
+
+
+def test_preview_works_with_meaningful_project_setup_only(client: TestClient) -> None:
+    project = create_project(client, "Lantern Island")
+    provider = FakeProvider()
+    client.app.dependency_overrides[get_story_package_provider] = lambda: provider
+
+    response = client.post(f"/api/projects/{project['id']}/ai/story-package/preview")
+
+    assert response.status_code == 200
+    assert "Project setup defaults" in provider.prompt
+    assert "Lantern Island" in provider.prompt
 
 
 def test_provider_response_is_returned_as_structured_schema(client: TestClient) -> None:

@@ -57,6 +57,7 @@ describe("AIShotPromptPanel", () => {
 
     expect(screen.getByRole("button", { name: /generate wan 2.2 prompts/i })).toBeInTheDocument();
     expect(screen.getByText(/uses your backend openai key only/i)).toBeInTheDocument();
+    expect(screen.getByText(/guided interview is not required/i)).toBeInTheDocument();
   });
 
   it("shows loading state", async () => {

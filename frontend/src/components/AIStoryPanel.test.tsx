@@ -123,6 +123,7 @@ describe("AIStoryPanel", () => {
 
     expect(screen.getByRole("button", { name: /generate story package/i })).toBeInTheDocument();
     expect(screen.getByText(/uses your backend openai key only/i)).toBeInTheDocument();
+    expect(screen.getByText(/manual story text, production bible, characters, locations, or existing shots/i)).toBeInTheDocument();
   });
 
   it("shows loading state", async () => {
@@ -132,8 +133,8 @@ describe("AIStoryPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: /generate story package/i }));
 
     expect(screen.getByRole("button", { name: /generating/i })).toBeDisabled();
-    expect(screen.getByRole("status")).toHaveTextContent("Preparing story interview");
-    expect(screen.getByText(/backend sends one structured openai request/i)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Collecting available story context");
+    expect(screen.getByText(/best available project context/i)).toBeInTheDocument();
   });
 
   it("renders preview sections", async () => {
@@ -188,5 +189,17 @@ describe("AIStoryPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: /generate story package/i }));
 
     expect(await screen.findByText("OpenAI API key is not configured.")).toBeInTheDocument();
+  });
+
+  it("renders missing-context backend error cleanly", async () => {
+    vi.mocked(api.previewStoryPackage).mockRejectedValue(
+      new Error("Add story context first: fill the interview, write in the story workspace, add shots, or update the Production Bible."),
+    );
+    render(<AIStoryPanel projectId={1} workspace={emptyWorkspace} audio={emptyAudio} shots={[]} onApplied={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /generate story package/i }));
+
+    expect(await screen.findByText(/Add story context first/i)).toBeInTheDocument();
+    expect(screen.getByText(/write in the story workspace/i)).toBeInTheDocument();
   });
 });

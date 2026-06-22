@@ -29,7 +29,7 @@ const defaultChoices: ApplyChoices = {
 type Operation = "generate" | "apply" | null;
 
 const generateSteps = [
-  "Preparing story interview",
+  "Collecting available story context",
   "Sending structured prompt to backend",
   "Waiting for OpenAI response",
   "Validating generated story package",
@@ -128,7 +128,9 @@ export function AIStoryPanel({ projectId, workspace, audio, shots, onApplied }: 
         </button>
       </div>
 
-      <p className="muted-note">Uses your backend OpenAI key only. WaveSpeed video generation is not enabled yet.</p>
+      <p className="muted-note">
+        You can generate from interview, manual story text, production bible, characters, locations, or existing shots. Uses your backend OpenAI key only. WaveSpeed video generation is not enabled yet.
+      </p>
       {hasExistingContent ? <p className="warning-note">Existing story, audio, or shot content found. Keep overwrite off to preserve your manual work.</p> : null}
       {operation ? <ProgressLoader operation={operation} elapsedSeconds={elapsedSeconds} /> : null}
       {error ? <div className="app-error">{error}</div> : null}
@@ -204,7 +206,7 @@ function ProgressLoader({ operation, elapsedSeconds }: { operation: Exclude<Oper
       </ol>
       <p className="progress-hint">
         {operation === "generate"
-          ? "The backend sends one structured OpenAI request. Progress is staged while the package returns, which can take up to two minutes."
+          ? "The backend sends one structured OpenAI request with the best available project context. Progress is staged while the package returns, which can take up to two minutes."
           : "Applying selected sections locally to the project database."}
       </p>
     </div>

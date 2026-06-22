@@ -110,6 +110,19 @@ def test_preview_returns_structured_generated_prompt_packages(client: TestClient
     assert "no uncanny faces" in provider.prompt
 
 
+def test_wan_prompt_preview_does_not_require_interview(client: TestClient) -> None:
+    project = create_project(client)
+    shot = create_shot(client, project["id"], "Manual shot list starts the project")
+    provider = FakeShotPromptProvider([package_payload(shot)])
+    client.app.dependency_overrides[get_shot_prompt_provider] = lambda: provider
+
+    response = client.post(f"/api/projects/{project['id']}/ai/shot-prompts/preview", json={})
+
+    assert response.status_code == 200
+    assert "Manual shot list starts the project" in provider.prompt
+    assert "Story workspace" in provider.prompt
+
+
 def test_invalid_provider_response_fails_safely(client: TestClient) -> None:
     project = create_project(client)
     create_shot(client, project["id"])

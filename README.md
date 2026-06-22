@@ -2,7 +2,7 @@
 
 Short Film Planner Studio is a private local web app for planning a 3-minute kids adventure AI short film from the first story idea through a locked Production Bible, shot prompts, manual shot takes, assets, audio notes, quality gates, and a final readiness checklist.
 
-Most planning tools are manual, with optional backend-only OpenAI generators for story packages and Wan 2.2 prompt packages. Local asset upload and preview is available for images, videos, audio, subtitles, and conservative text assets. Production Bible, shot takes, and shot quality gates help keep style, continuity, safety, and delivery rules consistent before any real video generation work. The app does not include WaveSpeed, authentication, export, public sharing, payments, collaboration, or a full video editor.
+Most planning tools are manual, with optional backend-only OpenAI generators for story packages and Wan 2.2 prompt packages. You can start from the optional guided interview, manual story/screenplay text, or an existing shot list. Local asset upload and preview is available for images, videos, audio, subtitles, and conservative text assets. Production Bible, shot takes, and shot quality gates help keep style, continuity, safety, and delivery rules consistent before any real video generation work. The app does not include WaveSpeed, authentication, export, public sharing, payments, collaboration, or a full video editor.
 
 ## Tech Stack
 
@@ -59,6 +59,18 @@ The AI generators are backend-only. Set `OPENAI_API_KEY` in the backend environm
 Each project has a Production Bible that acts as the source of truth for visual direction, continuity rules, safety and negative prompt rules, audio direction, and final delivery specs. It is created with defaults from project setup, can be edited manually, and can be explicitly locked or unlocked. Locked bibles remain readable, but edits are blocked until unlocked.
 
 The AI story and Wan 2.2 prompt generators include the Production Bible as context. They do not overwrite the bible.
+
+## Optional Story Start
+
+The guided interview is optional. Production work can start from:
+
+- Guided Interview
+- Manual Story / Screenplay in the Story workspace
+- Start from Shot List
+
+AI story package generation uses the best available context in this order: Production Bible, filled interview answers, manual Story workspace fields, existing characters/locations/shots, then meaningful project setup defaults. If no meaningful context exists, the backend returns a clean warning asking you to add story context first.
+
+Wan 2.2 prompt generation does not require the interview. It only requires storyboard shots and uses any available Production Bible, story workspace, character, location, and shot context.
 
 Each selected shot also has a Production Quality Gate section with 0-5 review scores, notes, and a final approval readiness checkbox. This review layer does not automatically change the shot status yet.
 
@@ -161,7 +173,7 @@ npm run build
 2. Open `http://127.0.0.1:5173`.
 3. Create a new project.
 4. Edit the project setup and save it.
-5. Fill and save the story interview.
+5. Add story context by filling the optional interview, writing in the Story workspace, or creating shots directly.
 6. Open `Production Bible`, edit visual direction and negative prompt rules, save, then lock the bible.
 7. Confirm Production Bible fields are read-only while locked.
 8. Add a character and edit it.
@@ -211,21 +223,22 @@ npm run build
 
 1. Set `OPENAI_API_KEY` in the backend shell.
 2. Start the backend and frontend.
-3. Create a project and fill the story interview.
-4. Open the `Story` tab.
-5. Click `Generate Story Package`.
-6. Review the generated preview sections.
-7. Choose which sections to apply.
-8. Leave `Allow overwrite` unchecked to protect existing manual content.
-9. Apply selected sections.
-10. Confirm the story workspace, characters, locations, optional shots, and audio plan updated as expected.
+3. Create a project.
+4. Add story context using one path: fill the optional interview, write a logline/synopsis in the Story workspace, add shots, or update the Production Bible.
+5. Open the `Story` tab.
+6. Click `Generate Story Package`.
+7. Review the generated preview sections.
+8. Choose which sections to apply.
+9. Leave `Allow overwrite` unchecked to protect existing manual content.
+10. Apply selected sections.
+11. Confirm the story workspace, characters, locations, optional shots, and audio plan updated as expected.
 
 ## Manual Wan 2.2 Prompt Package Test
 
 1. Set `OPENAI_API_KEY` in the backend shell.
 2. Start the backend and frontend.
 3. Create a project.
-4. Fill the story interview.
+4. Skip the interview if you already have a story or shot list.
 5. Generate and apply a story package, or manually create storyboard shots.
 6. Open the `Shots` tab.
 7. Select one shot or choose `All shots`.

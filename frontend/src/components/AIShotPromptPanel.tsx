@@ -123,7 +123,7 @@ export function AIShotPromptPanel({ projectId, shots, selectedShotId, onApplied 
         </button>
       </div>
 
-      <p className="muted-note">Uses your backend OpenAI key only. This prepares copy-ready prompts; WaveSpeed video generation is not enabled yet.</p>
+      <p className="muted-note">Uses your backend OpenAI key only. This prepares copy-ready prompts from existing shots and project context; the guided interview is not required. WaveSpeed video generation is not enabled yet.</p>
       {shots.length === 0 ? <p className="warning-note">Add storyboard shots before generating Wan 2.2 prompts.</p> : null}
       {hasExistingPrompts ? <p className="warning-note">Selected shots already contain prompt fields. Keep overwrite off to preserve manual prompt edits.</p> : null}
 

@@ -1,10 +1,10 @@
 # Short Film Planner Studio Project State
 
-Last reviewed against milestone `PRODUCTION_BIBLE_AND_QUALITY_GATES_01`.
+Last reviewed against milestone `OPTIONAL_INTERVIEW_WORKFLOW_01`.
 
 ## Purpose
 
-Short Film Planner Studio is a private local web app for planning a short kids adventure film. It supports project setup, story planning, a lockable Production Bible, character and location bibles, storyboard shots, copy-ready Wan 2.2 prompts, local asset tracking/upload, manual shot takes, shot quality gates, audio notes, and a final checklist.
+Short Film Planner Studio is a private local web app for planning a short kids adventure film. It supports project setup, optional guided interview, manual story/screenplay planning, a lockable Production Bible, character and location bibles, storyboard shots, copy-ready Wan 2.2 prompts, local asset tracking/upload, manual shot takes, shot quality gates, audio notes, and a final checklist.
 
 The app is not a video generator. WaveSpeed is not integrated.
 
@@ -49,7 +49,7 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 ## Database Models
 
 - `Project`: title, genre, target runtime, audience, tone, aspect ratio, visual style, safety rules.
-- `StoryInterview`: interview answers used as story-generation context.
+- `StoryInterview`: optional guided interview answers used as one possible story-generation context source.
 - `StoryWorkspace`: logline, synopsis, structure, screenplay, simple dialogue, voiceover, subtitles.
 - `Character`: character bible and continuity fields.
 - `Location`: location bible, continuity, safety, and negative prompts.
@@ -80,12 +80,12 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 ## Current Workflow
 
 1. Create project.
-2. Fill story interview.
-3. Generate story package preview.
+2. Add story context through the optional interview, manual Story workspace, Production Bible, characters/locations, or shots.
+3. Generate story package preview when useful.
 4. Apply selected story sections.
 5. Fill and lock the Production Bible.
 6. Review/edit characters, locations, and shots.
-7. Generate Wan 2.2 prompt package preview using the Production Bible as context.
+7. Generate Wan 2.2 prompt package preview using the Production Bible and shot context.
 8. Apply prompt packages to shot fields.
 9. Copy prompts manually for external tools.
 10. Upload generated assets locally.
@@ -95,9 +95,9 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 
 ## AI Features
 
-- Story package generation uses OpenAI from the backend only. It includes Production Bible context for tone, style, safety, and delivery rules. It creates a structured preview containing story workspace content, character suggestions, location suggestions, storyboard shots, audio plan, and safety review. Applying is user-controlled and overwrite-safe.
-- Wan 2.2 shot prompt generation uses OpenAI from the backend only. It includes Production Bible context for visual style, camera language, continuity, negative prompt rules, safety, and final delivery specs. It creates structured prompt packages for existing shots. It does not call WaveSpeed and does not generate files or videos.
-- Missing API keys, provider errors, timeouts, invalid responses, no-interview states, no-shot states, and cross-project shot IDs have test coverage.
+- Story package generation uses OpenAI from the backend only. The guided interview is optional; preview uses the best available context from the Production Bible, any filled interview answers, manual Story workspace fields, existing characters/locations/shots, and meaningful project setup defaults. It creates a structured preview containing story workspace content, character suggestions, location suggestions, storyboard shots, audio plan, and safety review. Applying is user-controlled and overwrite-safe.
+- Wan 2.2 shot prompt generation uses OpenAI from the backend only. It does not require interview answers. It includes Production Bible context for visual style, camera language, continuity, negative prompt rules, safety, and final delivery specs, plus existing shot context. It creates structured prompt packages for existing shots. It does not call WaveSpeed and does not generate files or videos.
+- Missing API keys, provider errors, timeouts, invalid responses, missing-story-context states, no-shot states, and cross-project shot IDs have test coverage.
 
 ## Production Bible and Quality Gates
 
@@ -141,6 +141,7 @@ Backend tests cover:
 - audio plan and checklist
 - invalid project/shot access and cross-project asset shot validation
 - AI story package preview/apply paths using fake providers
+- optional interview story preview paths using interview, manual workspace, shots, Production Bible, and project setup context
 - AI shot prompt preview/apply paths using fake providers
 - Production Bible default creation, update, lock/unlock, and locked-update failure
 - AI prompt context including Production Bible content
@@ -164,6 +165,7 @@ E2E tests cover:
 - prompt copy flow
 - asset upload/preview/delete flow
 - AI panel safe-state flow without calling OpenAI
+- manual story start without filling the interview
 - production bible lock and shot quality gate persistence flow
 - shot take creation, prompt snapshot, approval handoff, and manual asset linking flow
 
