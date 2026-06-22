@@ -104,7 +104,8 @@ class OpenAIShotPromptClient(OpenAIBaseClient):
                         "role": "system",
                         "content": (
                             "You generate safe, copy-ready Wan 2.2 image-to-video prompt packages for kids adventure storyboard shots. "
-                            "Use a strict prompt framework with cast count, locked camera/framing, action timeline, motion boundaries, "
+                            "Use a strict GPT image prompt framework for storyboard/reference, exact start-frame, and exact end-frame stills, "
+                            "plus a strict Wan motion framework with cast count, locked camera/framing, action timeline, motion boundaries, "
                             "positive constraints, and start/end-frame consistency."
                         ),
                     },

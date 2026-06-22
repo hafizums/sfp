@@ -1,6 +1,6 @@
 # Short Film Planner Studio Project State
 
-Last reviewed against milestone `WAN_PROMPT_OBEDIENCE_FRAMEWORK_01`.
+Last reviewed against milestone `GPT_IMAGE_PROMPT_FRAMEWORK_01`.
 
 ## Purpose
 
@@ -96,7 +96,7 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 ## AI Features
 
 - Story package generation uses OpenAI from the backend only. The guided interview is optional; preview uses the best available context from the Production Bible, any filled interview answers, manual Story workspace fields, existing characters/locations/shots, and meaningful project setup defaults. It creates a structured preview containing story workspace content, character suggestions, location suggestions, storyboard shots, audio plan, and safety review. Applying is user-controlled and overwrite-safe.
-- Wan 2.2 shot prompt generation uses OpenAI from the backend only. It does not require interview answers. It includes Production Bible context for visual style, camera language, continuity, negative prompt rules, safety, and final delivery specs, plus existing shot context. It creates structured prompt packages for existing shots using a strict Wan framework: cast/count, locked setting/time, camera/framing, beginning-middle-end action timeline, motion boundaries, positive constraints, and start/end-frame consistency. It does not call WaveSpeed and does not generate files or videos.
+- Wan 2.2 shot prompt generation uses OpenAI from the backend only. It does not require interview answers. It includes Production Bible context for visual style, camera language, continuity, negative prompt rules, safety, and final delivery specs, plus existing shot context. It creates structured prompt packages for existing shots using a strict GPT image framework for `image_prompt`, `start_frame_prompt`, and `end_frame_prompt`, plus a strict Wan framework for `video_prompt`: cast/count, locked setting/time, camera/framing, beginning-middle-end action timeline, motion boundaries, positive constraints, and start/end-frame consistency. It does not call OpenAI image generation, WaveSpeed, or create files or videos.
 - Missing API keys, provider errors, timeouts, invalid responses, missing-story-context states, no-shot states, and cross-project shot IDs have test coverage.
 
 ## Production Bible and Quality Gates
@@ -144,6 +144,7 @@ Backend tests cover:
 - optional interview story preview paths using interview, manual workspace, shots, Production Bible, and project setup context
 - AI shot prompt preview/apply paths using fake providers
 - strict Wan prompt-generation instructions, including cast/count, camera/framing, action timeline, motion boundaries, positive constraints, start/end-frame consistency, negative prompt limitations, no extra characters, no identity drift, no sudden scene change, Production Bible context, and optional-interview behavior
+- strict GPT image prompt-generation instructions for storyboard/reference stills, exact start frames, exact end frames, visible character count, named characters, character appearance/outfit, locked location, composition, lighting/color palette, Production Bible style, still-prompt motion limits, no text/logos/watermarks, no extra characters, and no identity drift
 - Production Bible default creation, update, lock/unlock, and locked-update failure
 - AI prompt context including Production Bible content
 - shot quality review default creation, update, and invalid-shot errors
@@ -153,7 +154,7 @@ Frontend unit tests cover:
 
 - dashboard create/edit/delete confirmation
 - story AI panel render/loading/preview/apply/error/warnings
-- Wan prompt panel render/loading/preview/apply/error/no-shot state and strict framework helper text
+- Wan prompt panel render/loading/preview/apply/error/no-shot state, strict Wan helper text, and GPT image prompt helper text
 - shot runtime, reorder, status update, copy feedback, attached asset display
 - Production Bible render, lock/unlock behavior, locked fields, save, and negative-rule copy
 - shot quality gate render and update call
@@ -166,7 +167,7 @@ E2E tests cover:
 - prompt copy flow
 - asset upload/preview/delete flow
 - AI panel safe-state flow without calling OpenAI
-- manual story start without filling the interview, including strict Wan helper text and prompt package copy flow
+- manual story start without filling the interview, including GPT image helper text, strict Wan helper text, and prompt package copy flow
 - production bible lock and shot quality gate persistence flow
 - shot take creation, prompt snapshot, approval handoff, and manual asset linking flow
 

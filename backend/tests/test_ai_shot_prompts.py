@@ -182,6 +182,60 @@ def test_prompt_generation_instructions_use_strict_wan_framework(client: TestCli
     assert "WaveSpeed manual prompt fields" not in prompt
 
 
+def test_prompt_generation_instructions_use_gpt_image_framework(client: TestClient) -> None:
+    project = create_project(client)
+    client.put(
+        f"/api/projects/{project['id']}/production-bible",
+        json={
+            "visual_style": "soft paper diorama",
+            "color_palette": "mint, gold, sky blue",
+            "lighting_style": "warm miniature lighting from frame left",
+        },
+    )
+    create_character(
+        client,
+        project["id"],
+        name="Mia",
+        appearance="round face, bright eyes, short curls",
+        outfit="yellow raincoat and red boots",
+    )
+    create_location(
+        client,
+        project["id"],
+        name="Treehouse",
+        description="cozy backyard treehouse with a tiny glowing door",
+        lighting="golden afternoon from frame left",
+        color_palette="leaf green and warm amber",
+    )
+    shot = create_shot(client, project["id"])
+    provider = FakeShotPromptProvider([package_payload(shot)])
+    client.app.dependency_overrides[get_shot_prompt_provider] = lambda: provider
+
+    response = client.post(f"/api/projects/{project['id']}/ai/shot-prompts/preview", json={})
+
+    assert response.status_code == 200
+    prompt = provider.prompt
+    assert "image_prompt: GPT image storyboard/reference still" in prompt
+    assert "start_frame_prompt: GPT image exact first frame" in prompt
+    assert "end_frame_prompt: GPT image exact final frame" in prompt
+    assert "exact visible character count" in prompt
+    assert "named characters" in prompt
+    assert "character appearance and outfit" in prompt
+    assert "yellow raincoat and red boots" in prompt
+    assert "locked location from the location bible" in prompt
+    assert "camera framing and angle" in prompt
+    assert "composition" in prompt
+    assert "lighting" in prompt
+    assert "color palette" in prompt
+    assert "Production Bible style" in prompt
+    assert "no text/logos/watermarks" in prompt
+    assert "no extra characters" in prompt
+    assert "no identity drift" in prompt
+    assert "avoid motion verbs in still prompts" in prompt
+    assert "video_prompt: 80-140 words where possible" in prompt
+    assert "Strict Wan prompt framework" in prompt
+
+
 def test_wan_prompt_preview_does_not_require_interview(client: TestClient) -> None:
     project = create_project(client)
     shot = create_shot(client, project["id"], "Manual shot list starts the project")

@@ -80,6 +80,12 @@ Start frame prompts describe the exact opening frame: character positions, pose,
 
 See `docs/WAN_PROMPTING_GUIDE.md` for the full checklist and recommended workflow.
 
+## GPT Image Prompt Framework
+
+The same prompt package also separates still-image prompts from Wan motion prompts. `image_prompt` is optimized as a storyboard/reference still for judging composition, character consistency, location identity, lighting, color palette, camera framing, and Production Bible style. `start_frame_prompt` is the exact first frame for image-to-video, and `end_frame_prompt` is the exact final frame with the same characters and setting plus one small deliberate visual change.
+
+GPT image prompts should use concrete visible details, exact character count, named characters, character appearance/outfit, locked location, stable composition, age 4+ mood, and no text/logos/watermarks/UI/subtitles. See `docs/GPT_IMAGE_PROMPTING_GUIDE.md` for still-image prompt checklists and examples.
+
 Each selected shot also has a Production Quality Gate section with 0-5 review scores, notes, and a final approval readiness checkbox. This review layer does not automatically change the shot status yet.
 
 ## Shot Takes
@@ -251,7 +257,7 @@ npm run build
 6. Open the `Shots` tab.
 7. Select one shot or choose `All shots`.
 8. Click `Generate Wan 2.2 Prompts`.
-9. Review the image, start frame, end frame, video, and negative prompts for cast/count, locked setting, camera/framing, action timeline, motion boundaries, and Production Bible style.
+9. Review `image_prompt` as a storyboard/reference still, `start_frame_prompt` as the exact first frame, `end_frame_prompt` as the exact final frame, and `video_prompt` as Wan motion between those frames.
 10. Leave `Allow overwrite` unchecked to protect manual prompt fields.
 11. Apply selected prompt packages.
 12. Confirm the shot prompt fields are populated.

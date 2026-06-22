@@ -240,6 +240,7 @@ test("Scenario G - manual story start without interview", async ({ page }) => {
 
   const wanPanel = page.getByLabel("AI Wan 2.2 prompt generator");
   await expect(wanPanel).toContainText("guided interview is not required");
+  await expect(wanPanel).toContainText("Image prompts are optimized for GPT image generation: storyboard still, exact start frame, and exact end frame");
   await expect(wanPanel).toContainText("strict framework: cast count, locked camera/framing, action timeline, and motion boundaries");
   await page.getByRole("button", { name: /copy wan 2.2 package/i }).click();
   await expect(page.getByText("Wan package copied")).toBeVisible();

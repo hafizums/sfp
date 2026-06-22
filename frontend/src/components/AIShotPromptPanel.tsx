@@ -124,6 +124,7 @@ export function AIShotPromptPanel({ projectId, shots, selectedShotId, onApplied 
       </div>
 
       <p className="muted-note">Uses your backend OpenAI key only. This prepares copy-ready prompts from existing shots and project context; the guided interview is not required. WaveSpeed video generation is not enabled yet.</p>
+      <p className="muted-note">Image prompts are optimized for GPT image generation: storyboard still, exact start frame, and exact end frame. Wan video prompts control motion after those images are created.</p>
       <p className="muted-note">Wan prompts are generated with a strict framework: cast count, locked camera/framing, action timeline, and motion boundaries to reduce random behavior.</p>
       {shots.length === 0 ? <p className="warning-note">Add storyboard shots before generating Wan 2.2 prompts.</p> : null}
       {hasExistingPrompts ? <p className="warning-note">Selected shots already contain prompt fields. Keep overwrite off to preserve manual prompt edits.</p> : null}

@@ -66,6 +66,12 @@ describe("AIShotPromptPanel", () => {
     expect(screen.getByText(/strict framework: cast count, locked camera\/framing, action timeline, and motion boundaries/i)).toBeInTheDocument();
   });
 
+  it("renders the GPT image prompt helper text", () => {
+    render(<AIShotPromptPanel projectId={1} shots={[shot]} selectedShotId={1} onApplied={vi.fn()} />);
+
+    expect(screen.getByText(/image prompts are optimized for gpt image generation: storyboard still, exact start frame, and exact end frame/i)).toBeInTheDocument();
+  });
+
   it("shows loading state", async () => {
     vi.mocked(api.previewShotPrompts).mockReturnValue(new Promise(() => undefined));
     render(<AIShotPromptPanel projectId={1} shots={[shot]} selectedShotId={1} onApplied={vi.fn()} />);
@@ -129,5 +135,6 @@ describe("AIShotPromptPanel", () => {
     expect(screen.getByRole("button", { name: /generate wan 2.2 prompts/i })).toBeDisabled();
     expect(screen.getByText(/add storyboard shots before generating/i)).toBeInTheDocument();
     expect(screen.getByText(/strict framework: cast count/i)).toBeInTheDocument();
+    expect(screen.getByText(/gpt image generation: storyboard still/i)).toBeInTheDocument();
   });
 });
