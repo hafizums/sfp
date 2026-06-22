@@ -17,6 +17,7 @@ def client() -> TestClient:
         poolclass=StaticPool,
     )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    app.state.testing_session_local = TestingSessionLocal
     Base.metadata.create_all(bind=engine)
 
     def override_get_db():

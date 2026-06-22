@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from app import models
+
 
 def create_project(client: TestClient, title: str = "Lantern Island", **overrides: object) -> dict:
     response = client.post("/api/projects", json={"title": title, **overrides})
@@ -32,6 +34,28 @@ def test_production_bible_default_creation(client: TestClient) -> None:
     assert "No danger" in bible["safety_rules"]
     assert "2.39:1" in bible["final_delivery_specs"]
     assert bible["locked"] is False
+
+
+def test_production_bible_lazy_creation_for_existing_project(client: TestClient) -> None:
+    project = create_project(client, visual_style="storybook clay")
+    bible = client.get(f"/api/projects/{project['id']}/production-bible").json()
+    response = client.put(
+        f"/api/projects/{project['id']}/production-bible",
+        json={"visual_style": "changed once"},
+    )
+    assert response.status_code == 200
+
+    db = client.app.state.testing_session_local()
+    try:
+        db.delete(db.get(models.ProductionBible, bible["id"]))
+        db.commit()
+    finally:
+        db.close()
+
+    healed = client.get(f"/api/projects/{project['id']}/production-bible")
+
+    assert healed.status_code == 200
+    assert healed.json()["visual_style"] == "storybook clay"
 
 
 def test_production_bible_update_lock_and_unlock(client: TestClient) -> None:

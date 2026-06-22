@@ -149,9 +149,11 @@ def default_production_bible(project: models.Project) -> models.ProductionBible:
 def get_or_create_production_bible(db: Session, project_id: int) -> models.ProductionBible:
     project = project_or_404(db, project_id)
     if project.production_bible is None:
-        project.production_bible = default_production_bible(project)
+        bible = default_production_bible(project)
+        db.add(bible)
         db.commit()
-        db.refresh(project.production_bible)
+        db.refresh(bible)
+        return bible
     return project.production_bible
 
 
