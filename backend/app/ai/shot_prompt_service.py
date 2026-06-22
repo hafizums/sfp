@@ -100,7 +100,7 @@ Screenplay: {workspace.cinematic_screenplay}
     )
 
     return f"""
-Generate copy-ready Wan 2.2 / WaveSpeed manual prompt fields for the selected storyboard shots.
+Generate copy-ready Wan 2.2 prompt fields for the selected storyboard shots using strict Wan mode by default.
 
 Project:
 - title: {project.title}
@@ -123,6 +123,9 @@ Production Bible:
 Story workspace:
 {story_context or "No story workspace text saved yet."}
 
+Guided interview:
+- Not required for Wan prompt generation. Use storyboard shots, Production Bible, story workspace, character bible, and location bible as the source context.
+
 Character continuity:
 {character_context}
 
@@ -135,12 +138,26 @@ Selected shots:
 Output requirements:
 - Return one package per selected shot using the original shot_id and shot_number
 - Generate image_prompt, start_frame_prompt, end_frame_prompt, video_prompt, negative_prompt, and optional notes
-- Prompts must be suitable for age 4+, kids adventure, fun, magical, safe, teamwork
-- Image prompt should establish the shot as a polished 16:9 cinematic frame
-- Start frame prompt should describe a clear opening visual state
-- End frame prompt should describe a clear ending visual state
-- Video prompt should include camera movement and subject movement for image-to-video / start-end-frame workflow
-- Negative prompt should include safety and quality exclusions
+- Prompts must be clear, structured, production-grade, kid-safe age 4+, and suited to image-to-video / start-end-frame video workflows
+- Strict Wan mode means stable and obedient: no vague cinematic-only wording, no overloaded action, no random emotional twist, no surprise new action, no unwanted kissing, hugging, violent, or scary behavior
+- image_prompt: strong 16:9 still-image description with exact visible character count, named characters, locked location, camera framing, Production Bible style/mood, and no text/logos
+- start_frame_prompt: exact opening frame with character positions, pose, expression, setting, camera/framing, and no new elements
+- end_frame_prompt: same scene, same characters, same setting, and only a small deliberate change from the start frame; do not add new characters or props unless the shot explicitly requires it
+- video_prompt: 80-140 words where possible, with cast/count, setting/time of day, locked camera/framing, a simple continuous action timeline, motion boundaries, Production Bible style/mood, and positive constraints
+- negative_prompt: concise but complete safety/artifact list; include no text, no logos, no UI, no watermark, no subtitles, no extra fingers, no distorted hands, no distorted faces, no identity drift, no extra characters unless the shot allows them, no sudden scene change, no jump cuts, no unsafe content, no horror, no weapons, and no blood
+
+Strict Wan prompt framework:
+- Cast and count: state exactly how many characters are visible. Use character names from the shot or character bible when available. If only named characters should appear, write "Only these named characters are visible. No extra people enter the frame." If background people are allowed, describe them as fixed background only.
+- Setting and time: lock the location, time of day, lighting, and visual continuity. Prevent location drift.
+- Camera and framing: specify shot type such as wide shot, medium shot, close-medium, close-up, over-the-shoulder, static camera, slow dolly in, or gentle pan. If the shot does not need camera motion, prefer "Static camera, no pan, no zoom, no cut." If camera movement exists, keep it simple and continuous.
+- Action timeline: every video_prompt must include beginning pose/action, middle motion, and end pose/action. Keep actions simple, continuous, and directly based on the shot.
+- Motion boundaries: put positive constraints inside the video_prompt, not only in negative_prompt. Examples: remains seated, stays in frame, no one enters or exits, only small hand movement, expression changes gently, no sudden action, no jump cuts, no extra characters, no identity drift.
+- Positive constraints: important behavior controls must appear positively in image_prompt, start_frame_prompt, end_frame_prompt, and especially video_prompt. Do not rely only on the negative prompt for obedience.
+- Visual style and mood: use Production Bible visual style, color palette, lighting, safety rules, and camera language.
+- Start/end frame consistency: start_frame_prompt describes exactly the opening frame; end_frame_prompt describes the same scene and same characters with only one small clear change suitable for start/end image-to-video.
+- LoRA caution: if notes mention LoRAs, warn that LoRAs can change motion, behavior, identity, or style and should be tested with short clips first.
+- No extra characters: unless a shot explicitly allows background people, do not introduce any extra characters.
+- No identity drift and no sudden scene change must be controlled in the video_prompt and repeated in negative_prompt.
 - Do not call WaveSpeed or create images/videos
 """.strip()
 

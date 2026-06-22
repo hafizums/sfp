@@ -32,6 +32,52 @@ def create_shot(client: TestClient, project_id: int, purpose: str = "Open the gl
     return response.json()
 
 
+def save_workspace(client: TestClient, project_id: int, **overrides: Any) -> dict:
+    payload = {
+        "logline": "Two kids follow a gentle glowing map.",
+        "synopsis": "A careful adventure through a bright garden.",
+        "three_act_structure": "",
+        "cinematic_screenplay": "",
+        "simple_dialogue_version": "",
+        "voiceover_draft": "",
+        "subtitle_draft": "",
+        **overrides,
+    }
+    response = client.put(f"/api/projects/{project_id}/workspace", json=payload)
+    assert response.status_code == 200
+    return response.json()
+
+
+def create_character(client: TestClient, project_id: int, **overrides: Any) -> dict:
+    payload = {
+        "name": "Mia",
+        "role": "curious inventor",
+        "age": "7",
+        "appearance": "round glasses and warm smile",
+        "outfit": "yellow raincoat",
+        "continuity_prompt": "Mia always wears her yellow raincoat.",
+        **overrides,
+    }
+    response = client.post(f"/api/projects/{project_id}/characters", json=payload)
+    assert response.status_code == 201
+    return response.json()
+
+
+def create_location(client: TestClient, project_id: int, **overrides: Any) -> dict:
+    payload = {
+        "name": "Treehouse",
+        "description": "cozy backyard treehouse with a tiny glowing door",
+        "mood": "safe wonder",
+        "lighting": "golden afternoon",
+        "color_palette": "leaf green and warm amber",
+        "continuity_prompt": "The tiny glowing door stays on the north wall.",
+        **overrides,
+    }
+    response = client.post(f"/api/projects/{project_id}/locations", json=payload)
+    assert response.status_code == 201
+    return response.json()
+
+
 def package_payload(shot: dict, suffix: str = "") -> dict:
     return {
         "shot_id": shot["id"],
@@ -110,6 +156,32 @@ def test_preview_returns_structured_generated_prompt_packages(client: TestClient
     assert "no uncanny faces" in provider.prompt
 
 
+def test_prompt_generation_instructions_use_strict_wan_framework(client: TestClient) -> None:
+    project = create_project(client)
+    shot = create_shot(client, project["id"])
+    provider = FakeShotPromptProvider([package_payload(shot)])
+    client.app.dependency_overrides[get_shot_prompt_provider] = lambda: provider
+
+    response = client.post(f"/api/projects/{project['id']}/ai/shot-prompts/preview", json={})
+
+    assert response.status_code == 200
+    prompt = provider.prompt
+    assert "strict Wan mode by default" in prompt
+    assert "state exactly how many characters are visible" in prompt
+    assert "locked camera/framing" in prompt
+    assert "beginning pose/action, middle motion, and end pose/action" in prompt
+    assert "Motion boundaries" in prompt
+    assert "positive constraints" in prompt
+    assert "Start/end frame consistency" in prompt
+    assert "Do not rely only on the negative prompt" in prompt
+    assert "No extra people enter the frame" in prompt
+    assert "no identity drift" in prompt
+    assert "no sudden scene change" in prompt
+    assert "Production Bible" in prompt
+    assert "Not required for Wan prompt generation" in prompt
+    assert "WaveSpeed manual prompt fields" not in prompt
+
+
 def test_wan_prompt_preview_does_not_require_interview(client: TestClient) -> None:
     project = create_project(client)
     shot = create_shot(client, project["id"], "Manual shot list starts the project")
@@ -121,6 +193,65 @@ def test_wan_prompt_preview_does_not_require_interview(client: TestClient) -> No
     assert response.status_code == 200
     assert "Manual shot list starts the project" in provider.prompt
     assert "Story workspace" in provider.prompt
+    assert "Not required for Wan prompt generation" in provider.prompt
+
+
+def test_preview_works_with_production_bible_only_plus_shots(client: TestClient) -> None:
+    project = create_project(client)
+    client.put(
+        f"/api/projects/{project['id']}/production-bible",
+        json={
+            "visual_style": "paper lantern miniatures",
+            "camera_language": "mostly static camera with gentle push-ins",
+            "safety_rules": "kid-safe, no scary danger",
+        },
+    )
+    shot = create_shot(client, project["id"], "Bible guided shot")
+    provider = FakeShotPromptProvider([package_payload(shot)])
+    client.app.dependency_overrides[get_shot_prompt_provider] = lambda: provider
+
+    response = client.post(f"/api/projects/{project['id']}/ai/shot-prompts/preview", json={})
+
+    assert response.status_code == 200
+    assert "paper lantern miniatures" in provider.prompt
+    assert "mostly static camera" in provider.prompt
+    assert "Bible guided shot" in provider.prompt
+
+
+def test_preview_works_with_story_workspace_plus_shots(client: TestClient) -> None:
+    project = create_project(client)
+    save_workspace(client, project["id"], logline="Mia follows a careful glowing kite.")
+    shot = create_shot(client, project["id"], "Workspace guided shot")
+    provider = FakeShotPromptProvider([package_payload(shot)])
+    client.app.dependency_overrides[get_shot_prompt_provider] = lambda: provider
+
+    response = client.post(f"/api/projects/{project['id']}/ai/shot-prompts/preview", json={})
+
+    assert response.status_code == 200
+    assert "Mia follows a careful glowing kite." in provider.prompt
+    assert "Workspace guided shot" in provider.prompt
+
+
+def test_preview_works_with_character_and_location_context(client: TestClient) -> None:
+    project = create_project(client)
+    create_character(client, project["id"], name="Jo", continuity_prompt="Jo keeps a blue explorer vest.")
+    create_location(client, project["id"], name="Floating Garden", lighting="soft morning glow")
+    shot = create_shot(
+        client,
+        project["id"],
+        "Character and location shot",
+        characters_present="Jo",
+        location_name="Floating Garden",
+    )
+    provider = FakeShotPromptProvider([package_payload(shot)])
+    client.app.dependency_overrides[get_shot_prompt_provider] = lambda: provider
+
+    response = client.post(f"/api/projects/{project['id']}/ai/shot-prompts/preview", json={})
+
+    assert response.status_code == 200
+    assert "Jo keeps a blue explorer vest" in provider.prompt
+    assert "Floating Garden" in provider.prompt
+    assert "soft morning glow" in provider.prompt
 
 
 def test_invalid_provider_response_fails_safely(client: TestClient) -> None:

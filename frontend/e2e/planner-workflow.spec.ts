@@ -34,18 +34,20 @@ test("Scenario A - basic project planning flow", async ({ page }) => {
   await page.getByRole("button", { name: "Save" }).click();
 
   await page.getByRole("button", { name: "Characters" }).click();
-  await page.getByLabel("Name").fill("Mia");
-  await page.getByLabel("Role").fill("curious inventor");
-  await page.getByLabel("Age").fill("7");
-  await page.getByRole("button", { name: /add character/i }).click();
-  await expect(page.locator(".resource-card").getByLabel("Role")).toHaveValue("curious inventor");
+  const characterForm = page.locator("form.resource-form").first();
+  await characterForm.getByLabel("Name").fill("Mia");
+  await characterForm.getByLabel("Role").fill("curious inventor");
+  await characterForm.getByLabel("Age").fill("7");
+  await characterForm.getByRole("button", { name: /add character/i }).click();
+  await expect(page.locator(".resource-card").getByLabel("Role", { exact: true })).toHaveValue("curious inventor");
 
   await page.getByRole("button", { name: "Locations" }).click();
-  await page.getByLabel("Name").fill("Floating Garden");
-  await page.getByLabel("Mood").fill("wonder");
-  await page.getByLabel("Lighting").fill("golden afternoon");
-  await page.getByRole("button", { name: /add location/i }).click();
-  await expect(page.locator(".resource-card").getByLabel("Lighting")).toHaveValue("golden afternoon");
+  const locationForm = page.locator("form.resource-form").first();
+  await locationForm.getByLabel("Name").fill("Floating Garden");
+  await locationForm.getByLabel("Mood").fill("wonder");
+  await locationForm.getByLabel("Lighting").fill("golden afternoon");
+  await locationForm.getByRole("button", { name: /add location/i }).click();
+  await expect(page.locator(".resource-card").getByLabel("Lighting", { exact: true })).toHaveValue("golden afternoon");
 
   await page.getByRole("button", { name: "Shots" }).click();
   await createShotFromUi(page, "Opening wonder", 5);
@@ -223,14 +225,22 @@ test("Scenario G - manual story start without interview", async ({ page }) => {
 
   await page.getByRole("button", { name: "Shots" }).click();
   await createShotFromUi(page, "Manual story opening", 5);
-  await page.getByLabel("Image prompt").fill("bright 16:9 storybook frame of cousins with a glowing kite");
-  await page.getByLabel("Start frame prompt").fill("The kite glows softly beside the cousins");
-  await page.getByLabel("End frame prompt").fill("A sky garden appears beyond soft clouds");
-  await page.getByLabel("Video prompt").fill("Gentle push forward as the kite floats toward the sky garden");
-  await page.getByLabel("Negative prompt").fill("no text, no logos, no scary danger");
-  await page.locator("form.shot-detail").getByRole("button", { name: /^Save$/ }).click();
+  const shotDetail = page.locator("form.shot-detail");
+  await shotDetail.getByLabel("Characters present").fill("Mia and Jo");
+  await shotDetail.getByLabel("Location", { exact: true }).fill("Sky Garden gate");
+  await shotDetail.getByLabel("Action").fill("Mia and Jo stand still while the glowing kite points toward the garden");
+  await shotDetail.getByLabel("Camera framing").fill("medium wide shot");
+  await shotDetail.getByLabel("Camera movement").fill("static camera");
+  await shotDetail.getByLabel("Image prompt").fill("bright 16:9 storybook frame of cousins with a glowing kite");
+  await shotDetail.getByLabel("Start frame prompt").fill("The kite glows softly beside the cousins");
+  await shotDetail.getByLabel("End frame prompt").fill("A sky garden appears beyond soft clouds");
+  await shotDetail.getByLabel("Video prompt").fill("Gentle push forward as the kite floats toward the sky garden");
+  await shotDetail.getByLabel("Negative prompt").fill("no text, no logos, no scary danger");
+  await shotDetail.getByRole("button", { name: /^Save$/ }).click();
 
-  await expect(page.getByLabel("AI Wan 2.2 prompt generator")).toContainText("guided interview is not required");
+  const wanPanel = page.getByLabel("AI Wan 2.2 prompt generator");
+  await expect(wanPanel).toContainText("guided interview is not required");
+  await expect(wanPanel).toContainText("strict framework: cast count, locked camera/framing, action timeline, and motion boundaries");
   await page.getByRole("button", { name: /copy wan 2.2 package/i }).click();
   await expect(page.getByText("Wan package copied")).toBeVisible();
 });

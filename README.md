@@ -72,6 +72,14 @@ AI story package generation uses the best available context in this order: Produ
 
 Wan 2.2 prompt generation does not require the interview. It only requires storyboard shots and uses any available Production Bible, story workspace, character, location, and shot context.
 
+## Strict Wan Prompt Framework
+
+Wan 2.2 can improvise if prompts are vague, so the app generates prompt packages with a strict default framework for production review. Generated prompts should name the exact cast count, lock the setting and time of day, specify camera/framing, describe a beginning-middle-end action timeline, and place positive motion boundaries directly in the video prompt. The negative prompt is still generated for artifacts and safety, but it is not the only place important behavior controls appear.
+
+Start frame prompts describe the exact opening frame: character positions, pose, expression, setting, and camera/framing. End frame prompts keep the same characters and setting with only a small deliberate change, making them safer for start/end image-to-video workflows. If LoRAs are used outside the app, test short clips first because LoRAs can change motion, behavior, identity, or style.
+
+See `docs/WAN_PROMPTING_GUIDE.md` for the full checklist and recommended workflow.
+
 Each selected shot also has a Production Quality Gate section with 0-5 review scores, notes, and a final approval readiness checkbox. This review layer does not automatically change the shot status yet.
 
 ## Shot Takes
@@ -239,16 +247,17 @@ npm run build
 2. Start the backend and frontend.
 3. Create a project.
 4. Skip the interview if you already have a story or shot list.
-5. Generate and apply a story package, or manually create storyboard shots.
+5. Generate and apply a story package, or manually create storyboard shots with strict character count, location, camera, and action details.
 6. Open the `Shots` tab.
 7. Select one shot or choose `All shots`.
 8. Click `Generate Wan 2.2 Prompts`.
-9. Review the image, start frame, end frame, video, and negative prompts.
+9. Review the image, start frame, end frame, video, and negative prompts for cast/count, locked setting, camera/framing, action timeline, motion boundaries, and Production Bible style.
 10. Leave `Allow overwrite` unchecked to protect manual prompt fields.
 11. Apply selected prompt packages.
 12. Confirm the shot prompt fields are populated.
 13. Use the individual prompt copy buttons and `Copy Wan 2.2 package`.
 14. Confirm no WaveSpeed API call happens; this prepares prompts only.
+15. Create start/end frames, test short external clips first, create takes, and approve the best take.
 
 ## Manual Asset Upload Test
 
