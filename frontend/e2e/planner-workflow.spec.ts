@@ -80,6 +80,48 @@ test("Scenario B - shot prompt copy flow", async ({ page, request }) => {
   await expect(page.getByText("Wan package copied")).toBeVisible();
 });
 
+test("Scenario E - production bible and quality gate flow", async ({ page }) => {
+  await page.goto("/");
+
+  const projectTitle = `E2E Production Bible ${Date.now()}`;
+  await page.getByLabel("Title").fill(projectTitle);
+  await page.getByLabel("Visual style").fill("soft paper diorama");
+  await page.getByRole("button", { name: /create project/i }).click();
+  await expect(page.getByText(projectTitle).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Production Bible", exact: true }).click();
+  const bibleSection = page.getByLabel("Production Bible");
+  await expect(bibleSection).toBeVisible();
+  await bibleSection.getByLabel("Visual style").fill("soft paper diorama with warm miniature lighting");
+  await bibleSection.getByLabel("Negative prompt rules").fill("no text, no logos, no watermarks, no distorted hands");
+  await bibleSection.getByRole("button", { name: /save bible/i }).click();
+  await bibleSection.getByRole("button", { name: /lock bible/i }).click();
+  await expect(page.getByRole("heading", { name: "Locked source of truth" })).toBeVisible();
+  await expect(bibleSection.getByLabel("Visual style")).toBeDisabled();
+  await expect(bibleSection.getByLabel("Negative prompt rules")).toBeDisabled();
+
+  await page.getByRole("button", { name: "Shots" }).click();
+  await createShotFromUi(page, "Production review shot", 5);
+  const qualityGate = page.getByLabel("Production Quality Gate");
+  await expect(qualityGate).toBeVisible();
+  await qualityGate.getByLabel("Character consistency").fill("4");
+  await qualityGate.getByLabel("Location continuity").fill("5");
+  await qualityGate.getByLabel("Visual style").fill("4");
+  await qualityGate.getByLabel("Review notes").fill("Ready after checking the locked bible.");
+  await qualityGate.getByLabel("Final approval readiness").check();
+  await qualityGate.getByRole("button", { name: /save quality gate/i }).click();
+  await expect(page.getByText("Quality gate saved")).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByText(projectTitle).first()).toBeVisible();
+  await page.getByRole("button", { name: "Shots" }).click();
+  const reloadedQualityGate = page.getByLabel("Production Quality Gate");
+  await expect(reloadedQualityGate.getByLabel("Character consistency")).toHaveValue("4");
+  await expect(reloadedQualityGate.getByLabel("Location continuity")).toHaveValue("5");
+  await expect(reloadedQualityGate.getByLabel("Review notes")).toHaveValue("Ready after checking the locked bible.");
+  await expect(reloadedQualityGate.getByLabel("Final approval readiness")).toBeChecked();
+});
+
 test("Scenario C - asset upload and preview flow", async ({ page, request }) => {
   const project = await createProject(request, `E2E Asset ${Date.now()}`);
   const shot = await createShot(request, project.id, { purpose: "Asset shot" });

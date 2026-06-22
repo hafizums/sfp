@@ -74,6 +74,7 @@ def build_shot_prompt_generation_prompt(project: models.Project, shots: list[mod
     characters = project.characters
     locations = project.locations
     safety_rules = "\n".join(f"- {rule}" for rule in project.safety_rules)
+    production_bible = production_bible_context(project.production_bible)
     story_context = ""
     if workspace:
         story_context = f"""
@@ -116,6 +117,9 @@ Safety rules:
 - No text, logos, subtitles, UI, captions, or watermarks inside generated visuals
 - Avoid face morphing, extra fingers, distorted hands, random extra characters, inconsistent outfits, and identity drift
 
+Production Bible:
+{production_bible}
+
 Story workspace:
 {story_context or "No story workspace text saved yet."}
 
@@ -138,6 +142,27 @@ Output requirements:
 - Video prompt should include camera movement and subject movement for image-to-video / start-end-frame workflow
 - Negative prompt should include safety and quality exclusions
 - Do not call WaveSpeed or create images/videos
+""".strip()
+
+
+def production_bible_context(bible: models.ProductionBible | None) -> str:
+    if bible is None:
+        return "No Production Bible saved yet; use project setup, character bible, location bible, and shot details."
+    return f"""
+- locked: {bible.locked}
+- visual_style: {bible.visual_style}
+- color_palette: {bible.color_palette}
+- lighting_style: {bible.lighting_style}
+- camera_language: {bible.camera_language}
+- character_consistency_rules: {bible.character_consistency_rules}
+- location_consistency_rules: {bible.location_consistency_rules}
+- prop_consistency_rules: {bible.prop_consistency_rules}
+- safety_rules: {bible.safety_rules}
+- negative_prompt_rules: {bible.negative_prompt_rules}
+- music_style: {bible.music_style}
+- voiceover_style: {bible.voiceover_style}
+- subtitle_style: {bible.subtitle_style}
+- final_delivery_specs: {bible.final_delivery_specs}
 """.strip()
 
 

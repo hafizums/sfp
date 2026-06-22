@@ -85,6 +85,13 @@ def test_preview_validates_project_has_shots(client: TestClient) -> None:
 
 def test_preview_returns_structured_generated_prompt_packages(client: TestClient) -> None:
     project = create_project(client)
+    client.put(
+        f"/api/projects/{project['id']}/production-bible",
+        json={
+            "visual_style": "locked watercolor miniature",
+            "negative_prompt_rules": "no text, no logos, no uncanny faces",
+        },
+    )
     shot = create_shot(client, project["id"])
     provider = FakeShotPromptProvider([package_payload(shot)])
     client.app.dependency_overrides[get_shot_prompt_provider] = lambda: provider
@@ -99,6 +106,8 @@ def test_preview_returns_structured_generated_prompt_packages(client: TestClient
     assert data[0]["shot_id"] == shot["id"]
     assert data[0]["image_prompt"].startswith("16:9 cinematic")
     assert "shot_id=" in provider.prompt
+    assert "locked watercolor miniature" in provider.prompt
+    assert "no uncanny faces" in provider.prompt
 
 
 def test_invalid_provider_response_fails_safely(client: TestClient) -> None:

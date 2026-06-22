@@ -1,8 +1,9 @@
 import { ArrowDown, ArrowUp, Copy, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { api } from "../api/client";
 import { buildWanPackage, plannedRuntime, progressFromShots, remainingRuntime } from "../planner";
-import { shotStatuses, type Asset, type Shot, type ShotInput } from "../types";
+import { shotStatuses, type Asset, type Shot, type ShotInput, type ShotQualityReview, type ShotQualityReviewInput } from "../types";
 import { AIShotPromptPanel } from "./AIShotPromptPanel";
 import { AssetPreviewCard } from "./AssetManager";
 
@@ -35,6 +36,7 @@ type Props = {
   onDelete: (id: number) => Promise<void>;
   onReorder: (shotIds: number[]) => Promise<void>;
   onPromptsApplied: () => Promise<void>;
+  onQualityReviewSaved: () => Promise<void>;
 };
 
 export function ShotList({
@@ -47,6 +49,7 @@ export function ShotList({
   onDelete,
   onReorder,
   onPromptsApplied,
+  onQualityReviewSaved,
 }: Props) {
   const [selectedId, setSelectedId] = useState<number | null>(shots[0]?.id ?? null);
   const selected = shots.find((shot) => shot.id === selectedId) ?? shots[0];
@@ -142,6 +145,7 @@ export function ShotList({
             onCopy={copyText}
             onDelete={onDelete}
             onUpdate={onUpdate}
+            onQualityReviewSaved={onQualityReviewSaved}
           />
         ) : (
           <div className="empty-state">Add the first shot to begin the 30-45 shot plan.</div>
@@ -157,12 +161,14 @@ function ShotDetail({
   onCopy,
   onUpdate,
   onDelete,
+  onQualityReviewSaved,
 }: {
   shot: Shot;
   assets: Asset[];
   onCopy: (text: string) => Promise<void>;
   onUpdate: (id: number, shot: Partial<ShotInput>) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
+  onQualityReviewSaved: () => Promise<void>;
 }) {
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
   const [draft, setDraft] = useState<ShotInput>({
@@ -259,6 +265,8 @@ function ShotDetail({
 
       <ShotAssets assets={assets} shot={shot} />
 
+      <ShotQualityGate shot={shot} onSaved={onQualityReviewSaved} />
+
       <section className="prompt-group" aria-label="Wan 2.2 prompt fields">
         <div className="section-heading compact">
           <div>
@@ -279,6 +287,106 @@ function ShotDetail({
       <label>Notes<textarea value={draft.notes} onChange={(event) => field("notes", event.target.value)} /></label>
     </form>
   );
+}
+
+const qualityFields: Array<{ key: keyof ShotQualityReviewInput; label: string }> = [
+  { key: "character_consistency_score", label: "Character consistency" },
+  { key: "location_continuity_score", label: "Location continuity" },
+  { key: "visual_style_score", label: "Visual style" },
+  { key: "motion_quality_score", label: "Motion/camera quality" },
+  { key: "safety_score", label: "Safety" },
+  { key: "prompt_readiness_score", label: "Prompt readiness" },
+  { key: "asset_readiness_score", label: "Asset readiness" },
+];
+
+function ShotQualityGate({ shot, onSaved }: { shot: Shot; onSaved: () => Promise<void> }) {
+  const [review, setReview] = useState<ShotQualityReview | null>(null);
+  const [draft, setDraft] = useState<ShotQualityReviewInput | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void api.getShotQualityReview(shot.id).then((next) => {
+      if (!active) {
+        return;
+      }
+      setReview(next);
+      setDraft(toQualityInput(next));
+      setSaved(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [shot.id]);
+
+  async function save() {
+    if (!draft) {
+      return;
+    }
+    const next = await api.saveShotQualityReview(shot.id, draft);
+    setReview(next);
+    setDraft(toQualityInput(next));
+    setSaved(true);
+    await onSaved();
+    window.setTimeout(() => setSaved(false), 1500);
+  }
+
+  if (!review || !draft) {
+    return <section className="quality-gate" aria-label="Production Quality Gate">Loading quality gate.</section>;
+  }
+
+  return (
+    <section className="quality-gate" aria-label="Production Quality Gate">
+      <div className="section-heading compact">
+        <div>
+          <p className="eyebrow">Production Quality Gate</p>
+          <h3>Shot review checklist</h3>
+        </div>
+        {saved ? <span className="success-pill" role="status">Quality gate saved</span> : null}
+      </div>
+      <div className="form-grid">
+        {qualityFields.map((field) => (
+          <label key={field.key}>
+            {field.label}
+            <input
+              type="number"
+              min={0}
+              max={5}
+              value={Number(draft[field.key] ?? 0)}
+              onChange={(event) => setDraft({ ...draft, [field.key]: Number(event.target.value) })}
+            />
+          </label>
+        ))}
+      </div>
+      <label>
+        Review notes
+        <textarea value={draft.review_notes} onChange={(event) => setDraft({ ...draft, review_notes: event.target.value })} />
+      </label>
+      <label className="check-item">
+        <input
+          type="checkbox"
+          checked={draft.approved_for_final}
+          onChange={(event) => setDraft({ ...draft, approved_for_final: event.target.checked })}
+        />
+        <span>Final approval readiness</span>
+      </label>
+      <button type="button" className="ghost" onClick={() => void save()}><Save size={16} /> Save quality gate</button>
+    </section>
+  );
+}
+
+function toQualityInput(review: ShotQualityReview): ShotQualityReviewInput {
+  return {
+    character_consistency_score: review.character_consistency_score,
+    location_continuity_score: review.location_continuity_score,
+    visual_style_score: review.visual_style_score,
+    motion_quality_score: review.motion_quality_score,
+    safety_score: review.safety_score,
+    prompt_readiness_score: review.prompt_readiness_score,
+    asset_readiness_score: review.asset_readiness_score,
+    review_notes: review.review_notes,
+    approved_for_final: review.approved_for_final,
+  };
 }
 
 function ShotAssets({ assets, shot }: { assets: Asset[]; shot: Shot }) {

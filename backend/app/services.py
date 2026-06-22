@@ -19,6 +19,19 @@ DEFAULT_CHECKLIST = [
     "Ready for final edit",
 ]
 
+QUALITY_GATE_TEMPLATE = [
+    "Character consistency checked",
+    "Location continuity checked",
+    "Visual style matches Production Bible",
+    "Camera movement matches shot plan",
+    "Safety rules passed",
+    "No text/logos/watermarks",
+    "No distorted faces/hands",
+    "Shot asset attached if generated",
+    "Prompt package ready",
+    "Ready for review",
+]
+
 
 def not_found(name: str) -> HTTPException:
     return HTTPException(status_code=404, detail=f"{name} not found")
@@ -54,11 +67,15 @@ def enrich_project(project: models.Project) -> schemas.ProjectRead:
     data["current_planned_runtime"] = calculate_runtime(project.shots)
     data["shot_count"] = len(project.shots)
     data["progress"] = calculate_progress(project.shots)
+    data["production_bible_locked"] = bool(project.production_bible and project.production_bible.locked)
+    data["quality_review_count"] = len(project.quality_reviews)
+    data["shots_approved_for_final"] = sum(1 for review in project.quality_reviews if review.approved_for_final)
     return schemas.ProjectRead(**data)
 
 
 def create_default_children(db: Session, project: models.Project) -> None:
     db.add(models.StoryWorkspace(project=project))
+    db.add(default_production_bible(project))
     db.add(models.AudioPlan(project=project))
     for position, label in enumerate(DEFAULT_CHECKLIST, start=1):
         db.add(models.ChecklistItem(project=project, label=label, position=position))
@@ -105,6 +122,82 @@ def get_or_create_audio_plan(db: Session, project_id: int) -> models.AudioPlan:
         db.commit()
         db.refresh(project.audio_plan)
     return project.audio_plan
+
+
+def default_production_bible(project: models.Project) -> models.ProductionBible:
+    safety_rules = "\n".join(project.safety_rules or schemas.DEFAULT_SAFETY_RULES)
+    return models.ProductionBible(
+        project=project,
+        visual_style=project.visual_style,
+        camera_language="Gentle cinematic camera language with clear framing, readable action, and kid-safe motion.",
+        character_consistency_rules="Keep character age, outfit, silhouette, personality, and facial features consistent across every shot.",
+        location_consistency_rules="Keep geography, scale, palette, lighting direction, and recurring landmarks consistent.",
+        prop_consistency_rules="Keep hero props recognizable and avoid unexplained shape, color, or scale changes.",
+        safety_rules=safety_rules,
+        negative_prompt_rules=(
+            "no violence, no horror, no blood, no weapons, no unsafe stunts, no scary danger, "
+            "no text, no logos, no subtitles, no UI, no captions, no watermarks, no distorted faces, "
+            "no distorted hands, no extra fingers, no identity drift"
+        ),
+        music_style=f"{project.tone} music for a warm kids adventure",
+        voiceover_style="Warm, simple, age 4+ friendly narration.",
+        subtitle_style="Short, readable subtitles with simple vocabulary.",
+        final_delivery_specs=f"{project.aspect_ratio}, target runtime {project.target_runtime_seconds} seconds, age {project.audience_age}, private local planning workflow.",
+    )
+
+
+def get_or_create_production_bible(db: Session, project_id: int) -> models.ProductionBible:
+    project = project_or_404(db, project_id)
+    if project.production_bible is None:
+        project.production_bible = default_production_bible(project)
+        db.commit()
+        db.refresh(project.production_bible)
+    return project.production_bible
+
+
+def update_production_bible(
+    db: Session,
+    project_id: int,
+    payload: schemas.ProductionBibleUpdate,
+) -> models.ProductionBible:
+    bible = get_or_create_production_bible(db, project_id)
+    if bible.locked:
+        raise HTTPException(status_code=409, detail="Production Bible is locked. Unlock it before editing.")
+    apply_updates(bible, payload)
+    db.commit()
+    db.refresh(bible)
+    return bible
+
+
+def set_production_bible_locked(db: Session, project_id: int, locked: bool) -> models.ProductionBible:
+    bible = get_or_create_production_bible(db, project_id)
+    bible.locked = locked
+    db.commit()
+    db.refresh(bible)
+    return bible
+
+
+def get_or_create_quality_review(db: Session, shot_id: int) -> models.ShotQualityReview:
+    shot = shot_or_404(db, shot_id)
+    review = db.scalar(select(models.ShotQualityReview).where(models.ShotQualityReview.shot_id == shot_id))
+    if review is None:
+        review = models.ShotQualityReview(project_id=shot.project_id, shot_id=shot.id)
+        db.add(review)
+        db.commit()
+        db.refresh(review)
+    return review
+
+
+def update_quality_review(
+    db: Session,
+    shot_id: int,
+    payload: schemas.ShotQualityReviewUpdate,
+) -> models.ShotQualityReview:
+    review = get_or_create_quality_review(db, shot_id)
+    apply_updates(review, payload)
+    db.commit()
+    db.refresh(review)
+    return review
 
 
 def next_shot_number(db: Session, project_id: int) -> int:

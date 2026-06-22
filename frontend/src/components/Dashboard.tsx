@@ -113,6 +113,8 @@ export function Dashboard({ projects, selectedProjectId, onCreate, onUpdate, onD
               <span>{project.current_planned_runtime}s / {project.target_runtime_seconds}s</span>
               <span>{project.shot_count} shots</span>
               <span>{project.progress}% progress</span>
+              <span>{project.production_bible_locked ? "Bible locked" : "Bible editable"}</span>
+              <span>{project.shots_approved_for_final}/{project.shot_count} final-ready</span>
             </div>
             <div className="meter" aria-label={`${project.progress}% progress`}>
               <span style={{ width: `${project.progress}%` }} />

@@ -1,8 +1,8 @@
 # Short Film Planner Studio
 
-Short Film Planner Studio is a private local web app for planning a 3-minute kids adventure AI short film from the first story idea through shot prompts, assets, audio notes, and a final readiness checklist.
+Short Film Planner Studio is a private local web app for planning a 3-minute kids adventure AI short film from the first story idea through a locked Production Bible, shot prompts, assets, audio notes, quality gates, and a final readiness checklist.
 
-Most planning tools are manual, with optional backend-only OpenAI generators for story packages and Wan 2.2 prompt packages. Local asset upload and preview is available for images, videos, audio, subtitles, and conservative text assets. The app does not include WaveSpeed, authentication, export, public sharing, payments, collaboration, or a full video editor.
+Most planning tools are manual, with optional backend-only OpenAI generators for story packages and Wan 2.2 prompt packages. Local asset upload and preview is available for images, videos, audio, subtitles, and conservative text assets. Production Bible and shot quality gates help keep style, continuity, safety, and delivery rules consistent before any real video generation work. The app does not include WaveSpeed, authentication, export, public sharing, payments, collaboration, or a full video editor.
 
 ## Tech Stack
 
@@ -53,6 +53,14 @@ http://127.0.0.1:8010/api
 ```
 
 The AI generators are backend-only. Set `OPENAI_API_KEY` in the backend environment before using them. `OPENAI_MODEL_STORY` and `OPENAI_MODEL_PROMPTS` default to `gpt-5-mini`; `OPENAI_STORY_TIMEOUT_SECONDS` and `OPENAI_PROMPT_TIMEOUT_SECONDS` default to `120`.
+
+## Production Bible and Quality Gates
+
+Each project has a Production Bible that acts as the source of truth for visual direction, continuity rules, safety and negative prompt rules, audio direction, and final delivery specs. It is created with defaults from project setup, can be edited manually, and can be explicitly locked or unlocked. Locked bibles remain readable, but edits are blocked until unlocked.
+
+The AI story and Wan 2.2 prompt generators include the Production Bible as context. They do not overwrite the bible.
+
+Each selected shot also has a Production Quality Gate section with 0-5 review scores, notes, and a final approval readiness checkbox. This review layer does not automatically change the shot status yet.
 
 ## Backend Setup
 
@@ -146,17 +154,34 @@ npm run build
 3. Create a new project.
 4. Edit the project setup and save it.
 5. Fill and save the story interview.
-6. Add a character and edit it.
-7. Add a location and edit it.
-8. Add 3 shots.
-9. Reorder shots with the arrow buttons.
-10. Confirm planned runtime and remaining seconds update.
-11. Copy an image prompt and the Wan 2.2 package.
-12. Change a shot status to `Approved` and save.
-13. Add an asset metadata entry linked to a shot.
-14. Fill and save the audio plan.
-15. Check a final checklist item.
-16. Delete a project only after confirming the browser prompt.
+6. Open `Production Bible`, edit visual direction and negative prompt rules, save, then lock the bible.
+7. Confirm Production Bible fields are read-only while locked.
+8. Add a character and edit it.
+9. Add a location and edit it.
+10. Add 3 shots.
+11. Reorder shots with the arrow buttons.
+12. Confirm planned runtime and remaining seconds update.
+13. In selected shot detail, fill Production Quality Gate scores and notes, then save.
+14. Copy an image prompt and the Wan 2.2 package.
+15. Change a shot status to `Approved` and save.
+16. Add an asset metadata entry linked to a shot.
+17. Fill and save the audio plan.
+18. Check a final checklist item.
+19. Delete a project only after confirming the browser prompt.
+
+## Manual Production Bible and Quality Gate Test
+
+1. Start the backend and frontend.
+2. Create a project.
+3. Open the `Production Bible` tab.
+4. Edit visual style, camera language, continuity rules, safety rules, negative prompt rules, and delivery specs.
+5. Click `Save Bible`.
+6. Click `Lock Bible`.
+7. Confirm all bible fields are disabled and project metrics show the bible as locked.
+8. Open `Shots`, create a shot, and select it.
+9. Fill Production Quality Gate scores, review notes, and `Final approval readiness`.
+10. Save the quality gate.
+11. Reload the page and confirm the bible lock and shot quality review values persist.
 
 ## Manual AI Story Package Test
 

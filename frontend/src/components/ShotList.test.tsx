@@ -1,9 +1,19 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ShotList } from "./ShotList";
 import type { Asset, Shot } from "../types";
+
+const apiMock = vi.hoisted(() => ({
+  getShotQualityReview: vi.fn(),
+  saveShotQualityReview: vi.fn(),
+  assetFileUrl: vi.fn(),
+}));
+
+vi.mock("../api/client", () => ({
+  api: apiMock,
+}));
 
 const shot: Shot = {
   id: 1,
@@ -45,6 +55,42 @@ const attachedAsset: Asset = {
 };
 
 describe("ShotList", () => {
+  beforeEach(() => {
+    apiMock.getShotQualityReview.mockResolvedValue({
+      id: 1,
+      project_id: 1,
+      shot_id: 1,
+      character_consistency_score: 0,
+      location_continuity_score: 0,
+      visual_style_score: 0,
+      motion_quality_score: 0,
+      safety_score: 0,
+      prompt_readiness_score: 0,
+      asset_readiness_score: 0,
+      review_notes: "",
+      approved_for_final: false,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    });
+    apiMock.saveShotQualityReview.mockResolvedValue({
+      id: 1,
+      project_id: 1,
+      shot_id: 1,
+      character_consistency_score: 5,
+      location_continuity_score: 0,
+      visual_style_score: 0,
+      motion_quality_score: 0,
+      safety_score: 0,
+      prompt_readiness_score: 0,
+      asset_readiness_score: 0,
+      review_notes: "Looks consistent.",
+      approved_for_final: true,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    });
+    apiMock.assetFileUrl.mockImplementation((asset: Asset) => asset.preview_url);
+  });
+
   it("copies a Wan 2.2 prompt package for the selected shot", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
@@ -60,6 +106,7 @@ describe("ShotList", () => {
         onDelete={vi.fn()}
         onReorder={vi.fn()}
         onPromptsApplied={vi.fn()}
+        onQualityReviewSaved={vi.fn()}
       />,
     );
 
@@ -82,6 +129,7 @@ describe("ShotList", () => {
         onDelete={vi.fn()}
         onReorder={vi.fn()}
         onPromptsApplied={vi.fn()}
+        onQualityReviewSaved={vi.fn()}
       />,
     );
 
@@ -102,6 +150,7 @@ describe("ShotList", () => {
         onDelete={vi.fn()}
         onReorder={onReorder}
         onPromptsApplied={vi.fn()}
+        onQualityReviewSaved={vi.fn()}
       />,
     );
 
@@ -126,6 +175,7 @@ describe("ShotList", () => {
         onDelete={vi.fn()}
         onReorder={vi.fn()}
         onPromptsApplied={vi.fn()}
+        onQualityReviewSaved={vi.fn()}
       />,
     );
 
@@ -148,11 +198,12 @@ describe("ShotList", () => {
         onDelete={vi.fn()}
         onReorder={vi.fn()}
         onPromptsApplied={vi.fn()}
+        onQualityReviewSaved={vi.fn()}
       />,
     );
 
     await userEvent.selectOptions(screen.getByLabelText("Status"), "Approved");
-    await userEvent.click(screen.getByRole("button", { name: /save/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^save$/i }));
 
     expect(onUpdate).toHaveBeenCalledWith(1, expect.objectContaining({ status: "Approved" }));
   });
@@ -169,11 +220,43 @@ describe("ShotList", () => {
         onDelete={vi.fn()}
         onReorder={vi.fn()}
         onPromptsApplied={vi.fn()}
+        onQualityReviewSaved={vi.fn()}
       />,
     );
 
     expect(screen.getByText("Attached assets")).toBeInTheDocument();
     expect(screen.getByText("start.png")).toBeInTheDocument();
     expect(screen.getByText("approved start frame")).toBeInTheDocument();
+  });
+
+  it("updates the production quality gate", async () => {
+    const onQualityReviewSaved = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ShotList
+        shots={[shot]}
+        assets={[]}
+        targetRuntime={180}
+        projectId={1}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onReorder={vi.fn()}
+        onPromptsApplied={vi.fn()}
+        onQualityReviewSaved={onQualityReviewSaved}
+      />,
+    );
+
+    await userEvent.clear(await screen.findByLabelText("Character consistency"));
+    await userEvent.type(screen.getByLabelText("Character consistency"), "5");
+    await userEvent.type(screen.getByLabelText("Review notes"), "Looks consistent.");
+    await userEvent.click(screen.getByLabelText("Final approval readiness"));
+    await userEvent.click(screen.getByRole("button", { name: /save quality gate/i }));
+
+    expect(apiMock.saveShotQualityReview).toHaveBeenCalledWith(1, expect.objectContaining({
+      character_consistency_score: 5,
+      review_notes: "Looks consistent.",
+      approved_for_final: true,
+    }));
+    expect(onQualityReviewSaved).toHaveBeenCalled();
   });
 });

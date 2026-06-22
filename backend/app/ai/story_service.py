@@ -140,6 +140,7 @@ def apply_story_package(
 def build_story_package_prompt(project: models.Project, interview: models.StoryInterview) -> str:
     answers = "\n".join(f"- {field}: {getattr(interview, field)}" for field in INTERVIEW_FIELDS)
     safety_rules = "\n".join(f"- {rule}" for rule in project.safety_rules)
+    production_bible = production_bible_context(project.production_bible)
     return f"""
 Generate a structured kids adventure story package for a private 3-minute short film planner.
 
@@ -156,6 +157,9 @@ Safety rules:
 {safety_rules}
 - No scary danger
 
+Production Bible:
+{production_bible}
+
 Story interview answers:
 {answers}
 
@@ -166,6 +170,27 @@ Requirements:
 - 30 to 45 detailed storyboard shots totaling close to 180 seconds
 - Include cinematic screenplay, simple dialogue, voiceover, subtitle draft, character suggestions, location suggestions, music prompt, sound effects list, and final safety review notes
 - Do not create final image prompts, start frame prompts, end frame prompts, video prompts, or Wan 2.2 prompts yet
+""".strip()
+
+
+def production_bible_context(bible: models.ProductionBible | None) -> str:
+    if bible is None:
+        return "No Production Bible saved yet; use the project setup and story interview as the source of truth."
+    return f"""
+- locked: {bible.locked}
+- visual_style: {bible.visual_style}
+- color_palette: {bible.color_palette}
+- lighting_style: {bible.lighting_style}
+- camera_language: {bible.camera_language}
+- character_consistency_rules: {bible.character_consistency_rules}
+- location_consistency_rules: {bible.location_consistency_rules}
+- prop_consistency_rules: {bible.prop_consistency_rules}
+- safety_rules: {bible.safety_rules}
+- negative_prompt_rules: {bible.negative_prompt_rules}
+- music_style: {bible.music_style}
+- voiceover_style: {bible.voiceover_style}
+- subtitle_style: {bible.subtitle_style}
+- final_delivery_specs: {bible.final_delivery_specs}
 """.strip()
 
 

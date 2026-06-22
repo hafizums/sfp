@@ -96,7 +96,11 @@ def story_package_payload() -> dict:
 
 
 class FakeProvider:
+    def __init__(self) -> None:
+        self.prompt = ""
+
     def generate_story_package(self, prompt: str) -> GeneratedStoryPackage:
+        self.prompt = prompt
         assert "No violence" in prompt
         return GeneratedStoryPackage.model_validate(story_package_payload())
 
@@ -127,8 +131,16 @@ def test_preview_endpoint_validates_interview_exists(client: TestClient) -> None
 
 def test_provider_response_is_returned_as_structured_schema(client: TestClient) -> None:
     project = create_project(client)
+    client.put(
+        f"/api/projects/{project['id']}/production-bible",
+        json={
+            "visual_style": "pastel stop-motion look",
+            "negative_prompt_rules": "no logos, no watermarks, no scary shadows",
+        },
+    )
     save_interview(client, project["id"])
-    client.app.dependency_overrides[get_story_package_provider] = lambda: FakeProvider()
+    provider = FakeProvider()
+    client.app.dependency_overrides[get_story_package_provider] = lambda: provider
 
     response = client.post(f"/api/projects/{project['id']}/ai/story-package/preview")
 
@@ -136,6 +148,8 @@ def test_provider_response_is_returned_as_structured_schema(client: TestClient) 
     data = response.json()
     assert data["logline"].startswith("Two friends")
     assert len(data["shot_storyboard"]) == 30
+    assert "pastel stop-motion look" in provider.prompt
+    assert "no scary shadows" in provider.prompt
 
 
 def test_invalid_provider_response_fails_safely(client: TestClient) -> None:

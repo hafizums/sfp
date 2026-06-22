@@ -5,8 +5,9 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { AssetManager } from "./AssetManager";
 import { AIStoryPanel } from "./AIStoryPanel";
+import { ProductionBiblePanel } from "./ProductionBiblePanel";
 import { ShotList } from "./ShotList";
-import { type Asset, type AudioPlan, type Character, type CharacterInput, type ChecklistItem, type Location, type LocationInput, type Project, type ProjectInput, type Shot, type ShotInput, type StoryInterview, type StoryWorkspace } from "../types";
+import { type Asset, type AudioPlan, type Character, type CharacterInput, type ChecklistItem, type Location, type LocationInput, type ProductionBible, type Project, type ProjectInput, type Shot, type ShotInput, type StoryInterview, type StoryWorkspace } from "../types";
 
 const interviewLabels: Record<keyof StoryInterview, string> = {
   id: "id",
@@ -91,7 +92,7 @@ const emptyAudio: AudioPlan = {
   audio_notes: "",
 };
 
-const tabs = ["Setup", "Interview", "Story", "Characters", "Locations", "Shots", "Assets", "Audio", "Checklist"] as const;
+const tabs = ["Setup", "Interview", "Story", "Production Bible", "Characters", "Locations", "Shots", "Assets", "Audio", "Checklist"] as const;
 type Tab = (typeof tabs)[number];
 
 const workflowSteps = [
@@ -118,6 +119,7 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
   const [locations, setLocations] = useState<Location[]>([]);
   const [shots, setShots] = useState<Shot[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [productionBible, setProductionBible] = useState<ProductionBible | null>(null);
   const [audio, setAudio] = useState<AudioPlan>(emptyAudio);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [setupDraft, setSetupDraft] = useState<ProjectInput>(project);
@@ -125,10 +127,11 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
 
   async function loadProjectData() {
     setLoading(true);
-    const [nextInterview, nextWorkspace, nextCharacters, nextLocations, nextShots, nextAssets, nextAudio, nextChecklist] =
+    const [nextInterview, nextWorkspace, nextProductionBible, nextCharacters, nextLocations, nextShots, nextAssets, nextAudio, nextChecklist] =
       await Promise.all([
         api.getStoryInterview(project.id),
         api.getWorkspace(project.id),
+        api.getProductionBible(project.id),
         api.listCharacters(project.id),
         api.listLocations(project.id),
         api.listShots(project.id),
@@ -138,6 +141,7 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
       ]);
     setInterview(nextInterview);
     setWorkspace(nextWorkspace);
+    setProductionBible(nextProductionBible);
     setCharacters(nextCharacters);
     setLocations(nextLocations);
     setShots(nextShots);
@@ -249,6 +253,15 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
         />
       )}
 
+      {tab === "Production Bible" && (
+        <ProductionBiblePanel
+          projectId={project.id}
+          bible={productionBible}
+          onBibleChange={setProductionBible}
+          onRefreshProject={onRefreshProject}
+        />
+      )}
+
       {tab === "Characters" && (
         <CharacterSection
           characters={characters}
@@ -284,6 +297,7 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
           onDelete={async (id) => { await api.deleteShot(id); await refreshShotsAndProject(); }}
           onReorder={async (ids) => { setShots(await api.reorderShots(project.id, ids)); await onRefreshProject(); }}
           onPromptsApplied={refreshShotsAndProject}
+          onQualityReviewSaved={onRefreshProject}
         />
       )}
 

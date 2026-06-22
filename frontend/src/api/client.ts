@@ -12,8 +12,12 @@ import type {
   LocationInput,
   Project,
   ProjectInput,
+  ProductionBible,
+  ProductionBibleInput,
   Shot,
   ShotInput,
+  ShotQualityReview,
+  ShotQualityReviewInput,
   ShotPromptApplyRequest,
   ShotPromptApplyResponse,
   ShotPromptPreviewRequest,
@@ -73,6 +77,13 @@ export const api = {
   getWorkspace: (projectId: number) => request<StoryWorkspace>(`/projects/${projectId}/workspace`),
   saveWorkspace: (projectId: number, payload: StoryWorkspace) =>
     request<StoryWorkspace>(`/projects/${projectId}/workspace`, { method: "PUT", ...json(payload) }),
+  getProductionBible: (projectId: number) => request<ProductionBible>(`/projects/${projectId}/production-bible`),
+  saveProductionBible: (projectId: number, payload: Partial<ProductionBibleInput>) =>
+    request<ProductionBible>(`/projects/${projectId}/production-bible`, { method: "PUT", ...json(payload) }),
+  lockProductionBible: (projectId: number) =>
+    request<ProductionBible>(`/projects/${projectId}/production-bible/lock`, { method: "POST" }),
+  unlockProductionBible: (projectId: number) =>
+    request<ProductionBible>(`/projects/${projectId}/production-bible/unlock`, { method: "POST" }),
 
   listCharacters: (projectId: number) => request<Character[]>(`/projects/${projectId}/characters`),
   createCharacter: (projectId: number, payload: CharacterInput) =>
@@ -96,6 +107,9 @@ export const api = {
   deleteShot: (id: number) => request<void>(`/shots/${id}`, { method: "DELETE" }),
   reorderShots: (projectId: number, shotIds: number[]) =>
     request<Shot[]>(`/projects/${projectId}/shots/reorder`, { method: "POST", ...json({ shot_ids: shotIds }) }),
+  getShotQualityReview: (shotId: number) => request<ShotQualityReview>(`/shots/${shotId}/quality-review`),
+  saveShotQualityReview: (shotId: number, payload: Partial<ShotQualityReviewInput>) =>
+    request<ShotQualityReview>(`/shots/${shotId}/quality-review`, { method: "PUT", ...json(payload) }),
 
   listAssets: (projectId: number) => request<Asset[]>(`/projects/${projectId}/assets`),
   createAsset: (projectId: number, payload: AssetInput) =>

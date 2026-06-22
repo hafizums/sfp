@@ -1,10 +1,10 @@
 # Short Film Planner Studio Project State
 
-Last reviewed against commit `2791d962880bf12653ef6ce0e1ca9827105bf87b`.
+Last reviewed against milestone `PRODUCTION_BIBLE_AND_QUALITY_GATES_01`.
 
 ## Purpose
 
-Short Film Planner Studio is a private local web app for planning a short kids adventure film. It supports project setup, story planning, character and location bibles, storyboard shots, copy-ready Wan 2.2 prompts, local asset tracking/upload, audio notes, and a final checklist.
+Short Film Planner Studio is a private local web app for planning a short kids adventure film. It supports project setup, story planning, a lockable Production Bible, character and location bibles, storyboard shots, copy-ready Wan 2.2 prompts, local asset tracking/upload, shot quality gates, audio notes, and a final checklist.
 
 The app is not a video generator. WaveSpeed is not integrated.
 
@@ -27,9 +27,9 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 - `backend/app/database.py`: SQLAlchemy engine/session, `init_db()`, and small SQLite asset-column migration helper.
 - `backend/app/models.py`: SQLAlchemy tables.
 - `backend/app/schemas.py`: public API Pydantic schemas.
-- `backend/app/services.py`: shared project, shot, runtime, checklist, and validation logic.
+- `backend/app/services.py`: shared project, shot, runtime, checklist, Production Bible, quality review, and validation logic.
 - `backend/app/asset_storage.py`: local upload validation, safe filename handling, file serving path resolution, and deletion.
-- `backend/app/api/`: route modules for projects, story, characters, locations, shots, assets, audio, checklist, and AI.
+- `backend/app/api/`: route modules for projects, story, characters, locations, shots, assets, Production Bible, quality reviews, audio, checklist, and AI.
 - `backend/app/ai/`: OpenAI clients, structured AI schemas, story-package service, and shot-prompt service.
 
 ## Frontend Modules
@@ -38,9 +38,10 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 - `frontend/src/api/client.ts`: typed API client.
 - `frontend/src/components/Dashboard.tsx`: project creation, selection, edit, delete, metrics.
 - `frontend/src/components/ProjectWorkspace.tsx`: tabbed project workspace and workflow rail.
+- `frontend/src/components/ProductionBiblePanel.tsx`: source-of-truth production controls, lock/unlock flow, copyable negative prompt rules, and quality gate template.
 - `frontend/src/components/AIStoryPanel.tsx`: backend-only OpenAI story package preview/apply UI.
 - `frontend/src/components/AIShotPromptPanel.tsx`: backend-only OpenAI Wan 2.2 prompt package preview/apply UI.
-- `frontend/src/components/ShotList.tsx`: timeline shot list, shot detail editing, prompt copy actions, attached asset previews.
+- `frontend/src/components/ShotList.tsx`: timeline shot list, shot detail editing, shot quality gate review, prompt copy actions, attached asset previews.
 - `frontend/src/components/AssetManager.tsx`: local asset upload, metadata tracking, preview cards, delete actions.
 - `frontend/src/planner.ts`: runtime/progress helpers and Wan package text builder.
 - `frontend/src/types.ts`: shared frontend TypeScript types.
@@ -54,6 +55,8 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 - `Location`: location bible, continuity, safety, and negative prompts.
 - `Shot`: storyboard/timeline shot details plus image/start/end/video/negative prompt fields and status.
 - `Asset`: project-level or shot-level asset metadata plus optional uploaded file metadata.
+- `ProductionBible`: project-level creative/technical source of truth with lock state.
+- `ShotQualityReview`: shot-level quality gate scores, notes, and final readiness flag.
 - `AudioPlan`: music, sound effects, voiceover, subtitles, and notes.
 - `ChecklistItem`: final readiness checklist rows.
 
@@ -65,6 +68,8 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 - Locations: `/api/projects/{project_id}/locations`, `/api/locations/{location_id}`
 - Shots: `/api/projects/{project_id}/shots`, `/api/shots/{shot_id}`, `/api/projects/{project_id}/shots/reorder`
 - Assets: `/api/projects/{project_id}/assets`, `/api/projects/{project_id}/assets/upload`, `/api/assets/{asset_id}`, `/api/assets/{asset_id}/file`
+- Production Bible: `/api/projects/{project_id}/production-bible`, `/api/projects/{project_id}/production-bible/lock`, `/api/projects/{project_id}/production-bible/unlock`
+- Quality reviews: `/api/shots/{shot_id}/quality-review`
 - Audio: `/api/projects/{project_id}/audio-plan`
 - Checklist: `/api/projects/{project_id}/checklist`, `/api/checklist/{item_id}`
 - AI story: `/api/projects/{project_id}/ai/story-package/preview`, `/api/projects/{project_id}/ai/story-package/apply`
@@ -76,19 +81,29 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 2. Fill story interview.
 3. Generate story package preview.
 4. Apply selected story sections.
-5. Review/edit characters, locations, and shots.
-6. Generate Wan 2.2 prompt package preview.
-7. Apply prompt packages to shot fields.
-8. Copy prompts manually for external tools.
-9. Upload generated assets locally.
-10. Preview assets and track shot status.
-11. Complete final checklist.
+5. Fill and lock the Production Bible.
+6. Review/edit characters, locations, and shots.
+7. Generate Wan 2.2 prompt package preview using the Production Bible as context.
+8. Apply prompt packages to shot fields.
+9. Copy prompts manually for external tools.
+10. Upload generated assets locally.
+11. Preview assets, complete shot quality gates, and track shot status.
+12. Complete final checklist.
 
 ## AI Features
 
-- Story package generation uses OpenAI from the backend only. It creates a structured preview containing story workspace content, character suggestions, location suggestions, storyboard shots, audio plan, and safety review. Applying is user-controlled and overwrite-safe.
-- Wan 2.2 shot prompt generation uses OpenAI from the backend only. It creates structured prompt packages for existing shots. It does not call WaveSpeed and does not generate files or videos.
+- Story package generation uses OpenAI from the backend only. It includes Production Bible context for tone, style, safety, and delivery rules. It creates a structured preview containing story workspace content, character suggestions, location suggestions, storyboard shots, audio plan, and safety review. Applying is user-controlled and overwrite-safe.
+- Wan 2.2 shot prompt generation uses OpenAI from the backend only. It includes Production Bible context for visual style, camera language, continuity, negative prompt rules, safety, and final delivery specs. It creates structured prompt packages for existing shots. It does not call WaveSpeed and does not generate files or videos.
 - Missing API keys, provider errors, timeouts, invalid responses, no-interview states, no-shot states, and cross-project shot IDs have test coverage.
+
+## Production Bible and Quality Gates
+
+- Production Bible records are created per project from project setup defaults where possible.
+- Bible fields cover visual direction, continuity rules, safety rules, negative prompt rules, audio direction, and final delivery specs.
+- Lock/unlock is explicit. Locked bibles are readable but cannot be updated until unlocked.
+- Project metrics report whether the bible is locked, how many shots have quality reviews, and how many shots are approved for final.
+- Each shot can lazily create a quality review with 0-5 scores for character consistency, location continuity, visual style, motion/camera quality, safety, prompt readiness, and asset readiness.
+- Quality review approval is a review layer only. It does not automatically change shot status.
 
 ## Asset Upload Behavior
 
@@ -114,6 +129,9 @@ Backend tests cover:
 - invalid project/shot access and cross-project asset shot validation
 - AI story package preview/apply paths using fake providers
 - AI shot prompt preview/apply paths using fake providers
+- Production Bible default creation, update, lock/unlock, and locked-update failure
+- AI prompt context including Production Bible content
+- shot quality review default creation, update, and invalid-shot errors
 
 Frontend unit tests cover:
 
@@ -121,6 +139,8 @@ Frontend unit tests cover:
 - story AI panel render/loading/preview/apply/error/warnings
 - Wan prompt panel render/loading/preview/apply/error/no-shot state
 - shot runtime, reorder, status update, copy feedback, attached asset display
+- Production Bible render, lock/unlock behavior, locked fields, save, and negative-rule copy
+- shot quality gate render and update call
 - asset upload form, selectors, preview media, API response rendering, delete confirmation
 
 E2E tests cover:
@@ -129,6 +149,7 @@ E2E tests cover:
 - prompt copy flow
 - asset upload/preview/delete flow
 - AI panel safe-state flow without calling OpenAI
+- production bible lock and shot quality gate persistence flow
 
 ## Current Limitations
 
@@ -145,7 +166,7 @@ E2E tests cover:
 ## Recommended Next Milestones
 
 1. Stabilize E2E coverage in CI or a local pre-release script.
-2. Add a preflight/settings screen that clearly reports backend URL, OpenAI key presence, asset storage path, and upload limits.
+2. Add a preflight/settings screen that clearly reports backend URL, OpenAI key presence, asset storage path, upload limits, and Production Bible lock status.
 3. Add a manual WaveSpeed readiness checklist before implementing any API calls.
 4. Add WaveSpeed integration behind backend-only configuration and fake-provider tests.
 5. Add generated-video job tracking only after WaveSpeed API behavior is safely wrapped and tested.

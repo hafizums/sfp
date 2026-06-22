@@ -73,6 +73,9 @@ class ProjectRead(ProjectBase, OrmModel):
     current_planned_runtime: int = 0
     shot_count: int = 0
     progress: int = 0
+    production_bible_locked: bool = False
+    quality_review_count: int = 0
+    shots_approved_for_final: int = 0
 
 
 class StoryInterviewBase(BaseModel):
@@ -278,6 +281,78 @@ class AssetRead(AssetBase, OrmModel):
     @property
     def download_url(self) -> str:
         return f"/api/assets/{self.id}/file" if self.relative_path else ""
+
+
+class ProductionBibleBase(BaseModel):
+    visual_style: str = ""
+    color_palette: str = ""
+    lighting_style: str = ""
+    camera_language: str = ""
+    character_consistency_rules: str = ""
+    location_consistency_rules: str = ""
+    prop_consistency_rules: str = ""
+    safety_rules: str = ""
+    negative_prompt_rules: str = ""
+    music_style: str = ""
+    voiceover_style: str = ""
+    subtitle_style: str = ""
+    final_delivery_specs: str = ""
+
+
+class ProductionBibleUpdate(BaseModel):
+    visual_style: str | None = None
+    color_palette: str | None = None
+    lighting_style: str | None = None
+    camera_language: str | None = None
+    character_consistency_rules: str | None = None
+    location_consistency_rules: str | None = None
+    prop_consistency_rules: str | None = None
+    safety_rules: str | None = None
+    negative_prompt_rules: str | None = None
+    music_style: str | None = None
+    voiceover_style: str | None = None
+    subtitle_style: str | None = None
+    final_delivery_specs: str | None = None
+
+
+class ProductionBibleRead(ProductionBibleBase, OrmModel):
+    id: int
+    project_id: int
+    locked: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class ShotQualityReviewBase(BaseModel):
+    character_consistency_score: int = Field(0, ge=0, le=5)
+    location_continuity_score: int = Field(0, ge=0, le=5)
+    visual_style_score: int = Field(0, ge=0, le=5)
+    motion_quality_score: int = Field(0, ge=0, le=5)
+    safety_score: int = Field(0, ge=0, le=5)
+    prompt_readiness_score: int = Field(0, ge=0, le=5)
+    asset_readiness_score: int = Field(0, ge=0, le=5)
+    review_notes: str = ""
+    approved_for_final: bool = False
+
+
+class ShotQualityReviewUpdate(BaseModel):
+    character_consistency_score: int | None = Field(None, ge=0, le=5)
+    location_continuity_score: int | None = Field(None, ge=0, le=5)
+    visual_style_score: int | None = Field(None, ge=0, le=5)
+    motion_quality_score: int | None = Field(None, ge=0, le=5)
+    safety_score: int | None = Field(None, ge=0, le=5)
+    prompt_readiness_score: int | None = Field(None, ge=0, le=5)
+    asset_readiness_score: int | None = Field(None, ge=0, le=5)
+    review_notes: str | None = None
+    approved_for_final: bool | None = None
+
+
+class ShotQualityReviewRead(ShotQualityReviewBase, OrmModel):
+    id: int
+    project_id: int
+    shot_id: int
+    created_at: datetime
+    updated_at: datetime
 
 
 class AudioPlanBase(BaseModel):

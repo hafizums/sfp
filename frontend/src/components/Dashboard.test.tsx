@@ -20,6 +20,9 @@ const project: Project = {
   current_planned_runtime: 24,
   shot_count: 6,
   progress: 50,
+  production_bible_locked: true,
+  quality_review_count: 4,
+  shots_approved_for_final: 2,
 };
 
 describe("Dashboard", () => {
@@ -40,6 +43,8 @@ describe("Dashboard", () => {
     expect(screen.getByText("24s / 180s")).toBeInTheDocument();
     expect(screen.getByText("6 shots")).toBeInTheDocument();
     expect(screen.getByText("50% progress")).toBeInTheDocument();
+    expect(screen.getByText("Bible locked")).toBeInTheDocument();
+    expect(screen.getByText("2/6 final-ready")).toBeInTheDocument();
 
     await userEvent.clear(screen.getByLabelText("Title"));
     await userEvent.type(screen.getByLabelText("Title"), "Moon Map");

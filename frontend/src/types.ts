@@ -39,11 +39,22 @@ export type Project = {
   current_planned_runtime: number;
   shot_count: number;
   progress: number;
+  production_bible_locked: boolean;
+  quality_review_count: number;
+  shots_approved_for_final: number;
 };
 
 export type ProjectInput = Omit<
   Project,
-  "id" | "created_at" | "updated_at" | "current_planned_runtime" | "shot_count" | "progress"
+  | "id"
+  | "created_at"
+  | "updated_at"
+  | "current_planned_runtime"
+  | "shot_count"
+  | "progress"
+  | "production_bible_locked"
+  | "quality_review_count"
+  | "shots_approved_for_final"
 >;
 
 export type StoryInterview = {
@@ -160,6 +171,48 @@ export type AssetUploadInput = {
   notes: string;
   file: File;
 };
+
+export type ProductionBible = {
+  id: number;
+  project_id: number;
+  visual_style: string;
+  color_palette: string;
+  lighting_style: string;
+  camera_language: string;
+  character_consistency_rules: string;
+  location_consistency_rules: string;
+  prop_consistency_rules: string;
+  safety_rules: string;
+  negative_prompt_rules: string;
+  music_style: string;
+  voiceover_style: string;
+  subtitle_style: string;
+  final_delivery_specs: string;
+  locked: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProductionBibleInput = Omit<ProductionBible, "id" | "project_id" | "locked" | "created_at" | "updated_at">;
+
+export type ShotQualityReview = {
+  id: number;
+  project_id: number;
+  shot_id: number;
+  character_consistency_score: number;
+  location_continuity_score: number;
+  visual_style_score: number;
+  motion_quality_score: number;
+  safety_score: number;
+  prompt_readiness_score: number;
+  asset_readiness_score: number;
+  review_notes: string;
+  approved_for_final: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ShotQualityReviewInput = Omit<ShotQualityReview, "id" | "project_id" | "shot_id" | "created_at" | "updated_at">;
 
 export type AudioPlan = {
   id?: number;

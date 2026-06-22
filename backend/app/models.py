@@ -48,6 +48,12 @@ class Project(TimestampMixin, Base):
     assets: Mapped[list["Asset"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
+    production_bible: Mapped["ProductionBible | None"] = relationship(
+        back_populates="project", cascade="all, delete-orphan", uselist=False
+    )
+    quality_reviews: Mapped[list["ShotQualityReview"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )
     audio_plan: Mapped["AudioPlan | None"] = relationship(
         back_populates="project", cascade="all, delete-orphan", uselist=False
     )
@@ -172,6 +178,49 @@ class Asset(TimestampMixin, Base):
 
     project: Mapped[Project] = relationship(back_populates="assets")
     shot: Mapped[Shot | None] = relationship(back_populates="assets")
+
+
+class ProductionBible(TimestampMixin, Base):
+    __tablename__ = "production_bibles"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), unique=True, index=True)
+    visual_style: Mapped[str] = mapped_column(Text, default="")
+    color_palette: Mapped[str] = mapped_column(Text, default="")
+    lighting_style: Mapped[str] = mapped_column(Text, default="")
+    camera_language: Mapped[str] = mapped_column(Text, default="")
+    character_consistency_rules: Mapped[str] = mapped_column(Text, default="")
+    location_consistency_rules: Mapped[str] = mapped_column(Text, default="")
+    prop_consistency_rules: Mapped[str] = mapped_column(Text, default="")
+    safety_rules: Mapped[str] = mapped_column(Text, default="")
+    negative_prompt_rules: Mapped[str] = mapped_column(Text, default="")
+    music_style: Mapped[str] = mapped_column(Text, default="")
+    voiceover_style: Mapped[str] = mapped_column(Text, default="")
+    subtitle_style: Mapped[str] = mapped_column(Text, default="")
+    final_delivery_specs: Mapped[str] = mapped_column(Text, default="")
+    locked: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    project: Mapped[Project] = relationship(back_populates="production_bible")
+
+
+class ShotQualityReview(TimestampMixin, Base):
+    __tablename__ = "shot_quality_reviews"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    shot_id: Mapped[int] = mapped_column(ForeignKey("shots.id"), unique=True, index=True)
+    character_consistency_score: Mapped[int] = mapped_column(Integer, default=0)
+    location_continuity_score: Mapped[int] = mapped_column(Integer, default=0)
+    visual_style_score: Mapped[int] = mapped_column(Integer, default=0)
+    motion_quality_score: Mapped[int] = mapped_column(Integer, default=0)
+    safety_score: Mapped[int] = mapped_column(Integer, default=0)
+    prompt_readiness_score: Mapped[int] = mapped_column(Integer, default=0)
+    asset_readiness_score: Mapped[int] = mapped_column(Integer, default=0)
+    review_notes: Mapped[str] = mapped_column(Text, default="")
+    approved_for_final: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    project: Mapped[Project] = relationship(back_populates="quality_reviews")
+    shot: Mapped[Shot] = relationship()
 
 
 class AudioPlan(TimestampMixin, Base):
