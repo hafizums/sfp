@@ -5,11 +5,12 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
-from app.main import app
+from app.main import create_app
 
 
 @pytest.fixture()
 def client() -> TestClient:
+    app = create_app(init_database_on_startup=False)
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},

@@ -47,4 +47,34 @@ describe("Dashboard", () => {
 
     expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ title: "Moon Map" }));
   });
+
+  it("edits a project and deletes only after confirmation", async () => {
+    const onUpdate = vi.fn().mockResolvedValue(undefined);
+    const onDelete = vi.fn().mockResolvedValue(undefined);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(
+      <Dashboard
+        projects={[project]}
+        selectedProjectId={1}
+        onCreate={vi.fn()}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await userEvent.clear(screen.getByLabelText("Title"));
+    await userEvent.type(screen.getByLabelText("Title"), "Lantern Island Rescue");
+    await userEvent.click(screen.getByRole("button", { name: /save project/i }));
+
+    expect(onUpdate).toHaveBeenCalledWith(1, expect.objectContaining({ title: "Lantern Island Rescue" }));
+
+    await userEvent.click(screen.getByRole("button", { name: /delete/i }));
+
+    expect(confirm).toHaveBeenCalledWith('Delete "Lantern Island"?');
+    expect(onDelete).toHaveBeenCalledWith(1);
+    confirm.mockRestore();
+  });
 });

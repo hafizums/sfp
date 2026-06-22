@@ -1,6 +1,7 @@
 __pycache__/
 .pytest_cache/
 *.pyc
+.env
 
 backend/short_film_planner.db
 
