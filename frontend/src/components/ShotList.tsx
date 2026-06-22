@@ -164,6 +164,7 @@ function ShotDetail({
   onUpdate: (id: number, shot: Partial<ShotInput>) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
 }) {
+  const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
   const [draft, setDraft] = useState<ShotInput>({
     scene_number: shot.scene_number,
     duration_seconds: shot.duration_seconds,
@@ -206,6 +207,12 @@ function ShotDetail({
 
   const field = <K extends keyof ShotInput>(key: K, value: ShotInput[K]) => setDraft({ ...draft, [key]: value });
 
+  async function copyWithFeedback(label: string, text: string) {
+    await onCopy(text);
+    setCopiedLabel(label);
+    window.setTimeout(() => setCopiedLabel((current) => current === label ? null : current), 1800);
+  }
+
   return (
     <form
       className="shot-detail"
@@ -215,7 +222,10 @@ function ShotDetail({
       }}
     >
       <div className="detail-heading">
-        <h3>Shot {shot.shot_number}</h3>
+        <div>
+          <p className="eyebrow">Selected shot</p>
+          <h3>Shot {shot.shot_number}: {shot.purpose || "Untitled shot"}</h3>
+        </div>
         <div className="row-actions">
           <button type="submit" className="primary"><Save size={16} /> Save</button>
           <button
@@ -249,15 +259,23 @@ function ShotDetail({
 
       <ShotAssets assets={assets} shot={shot} />
 
-      <PromptField label="Image prompt" value={draft.image_prompt} onChange={(value) => field("image_prompt", value)} onCopy={() => onCopy(draft.image_prompt)} />
-      <PromptField label="Start frame prompt" value={draft.start_frame_prompt} onChange={(value) => field("start_frame_prompt", value)} onCopy={() => onCopy(draft.start_frame_prompt)} />
-      <PromptField label="End frame prompt" value={draft.end_frame_prompt} onChange={(value) => field("end_frame_prompt", value)} onCopy={() => onCopy(draft.end_frame_prompt)} />
-      <PromptField label="Video prompt" value={draft.video_prompt} onChange={(value) => field("video_prompt", value)} onCopy={() => onCopy(draft.video_prompt)} />
-      <PromptField label="Negative prompt" value={draft.negative_prompt} onChange={(value) => field("negative_prompt", value)} onCopy={() => onCopy(draft.negative_prompt)} />
-
-      <button type="button" className="ghost icon-text" onClick={() => onCopy(buildWanPackage({ ...shot, ...draft }))}>
-        <Copy size={16} /> Copy Wan 2.2 package
-      </button>
+      <section className="prompt-group" aria-label="Wan 2.2 prompt fields">
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Wan 2.2 prompts</p>
+            <h3>Copy-ready prompt fields</h3>
+          </div>
+          {copiedLabel ? <span className="success-pill" role="status">{copiedLabel} copied</span> : null}
+        </div>
+        <PromptField label="Image prompt" value={draft.image_prompt} onChange={(value) => field("image_prompt", value)} onCopy={() => copyWithFeedback("Image prompt", draft.image_prompt)} copied={copiedLabel === "Image prompt"} />
+        <PromptField label="Start frame prompt" value={draft.start_frame_prompt} onChange={(value) => field("start_frame_prompt", value)} onCopy={() => copyWithFeedback("Start frame prompt", draft.start_frame_prompt)} copied={copiedLabel === "Start frame prompt"} />
+        <PromptField label="End frame prompt" value={draft.end_frame_prompt} onChange={(value) => field("end_frame_prompt", value)} onCopy={() => copyWithFeedback("End frame prompt", draft.end_frame_prompt)} copied={copiedLabel === "End frame prompt"} />
+        <PromptField label="Video prompt" value={draft.video_prompt} onChange={(value) => field("video_prompt", value)} onCopy={() => copyWithFeedback("Video prompt", draft.video_prompt)} copied={copiedLabel === "Video prompt"} />
+        <PromptField label="Negative prompt" value={draft.negative_prompt} onChange={(value) => field("negative_prompt", value)} onCopy={() => copyWithFeedback("Negative prompt", draft.negative_prompt)} copied={copiedLabel === "Negative prompt"} />
+        <button type="button" className="primary icon-text" onClick={() => copyWithFeedback("Wan package", buildWanPackage({ ...shot, ...draft }))}>
+          <Copy size={16} /> {copiedLabel === "Wan package" ? "Copied Wan package" : "Copy Wan 2.2 package"}
+        </button>
+      </section>
       <label>Notes<textarea value={draft.notes} onChange={(event) => field("notes", event.target.value)} /></label>
     </form>
   );
@@ -283,12 +301,26 @@ function ShotAssets({ assets, shot }: { assets: Asset[]; shot: Shot }) {
   );
 }
 
-function PromptField({ label, value, onChange, onCopy }: { label: string; value: string; onChange: (value: string) => void; onCopy: () => Promise<void> }) {
+function PromptField({
+  label,
+  value,
+  onChange,
+  onCopy,
+  copied,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onCopy: () => Promise<void>;
+  copied: boolean;
+}) {
   return (
     <label className="prompt-field">
       <span>{label}</span>
       <textarea value={value} onChange={(event) => onChange(event.target.value)} />
-      <button type="button" className="ghost copy-button" onClick={onCopy}><Copy size={16} /> Copy</button>
+      <button type="button" className="ghost copy-button" onClick={onCopy} disabled={!value.trim()}>
+        <Copy size={16} /> {copied ? "Copied" : "Copy"}
+      </button>
     </label>
   );
 }

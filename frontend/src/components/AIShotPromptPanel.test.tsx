@@ -56,7 +56,7 @@ describe("AIShotPromptPanel", () => {
     render(<AIShotPromptPanel projectId={1} shots={[shot]} selectedShotId={1} onApplied={vi.fn()} />);
 
     expect(screen.getByRole("button", { name: /generate wan 2.2 prompts/i })).toBeInTheDocument();
-    expect(screen.getByText(/this prepares prompts only/i)).toBeInTheDocument();
+    expect(screen.getByText(/uses your backend openai key only/i)).toBeInTheDocument();
   });
 
   it("shows loading state", async () => {
@@ -114,5 +114,12 @@ describe("AIShotPromptPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: /generate wan 2.2 prompts/i }));
 
     expect(await screen.findByText("OpenAI prompt request timed out.")).toBeInTheDocument();
+  });
+
+  it("disables generation and explains no-shot state", () => {
+    render(<AIShotPromptPanel projectId={1} shots={[]} selectedShotId={null} onApplied={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: /generate wan 2.2 prompts/i })).toBeDisabled();
+    expect(screen.getByText(/add storyboard shots before generating/i)).toBeInTheDocument();
   });
 });

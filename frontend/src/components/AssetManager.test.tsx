@@ -76,23 +76,23 @@ describe("AssetManager", () => {
 
     expect(screen.getByRole("button", { name: /upload asset/i })).toBeInTheDocument();
     expect(screen.getByLabelText("File")).toBeInTheDocument();
-    expect(screen.getAllByLabelText("Asset type")[0]).toBeInTheDocument();
+    expect(screen.getByLabelText("Upload type")).toBeInTheDocument();
   });
 
   it("asset type selector works", async () => {
     render(<Harness />);
 
-    await userEvent.selectOptions(screen.getAllByLabelText("Asset type")[0], "generated_video");
+    await userEvent.selectOptions(screen.getByLabelText("Upload type"), "generated_video");
 
-    expect(screen.getAllByLabelText("Asset type")[0]).toHaveValue("generated_video");
+    expect(screen.getByLabelText("Upload type")).toHaveValue("generated_video");
   });
 
   it("shot selector appears and works", async () => {
     render(<Harness />);
 
-    await userEvent.selectOptions(screen.getAllByLabelText("Shot")[0], "1");
+    await userEvent.selectOptions(screen.getAllByLabelText("Attach to")[0], "1");
 
-    expect(screen.getAllByLabelText("Shot")[0]).toHaveValue("1");
+    expect(screen.getAllByLabelText("Attach to")[0]).toHaveValue("1");
   });
 
   it("uploaded asset list renders from API response", async () => {
@@ -132,7 +132,7 @@ describe("AssetManager", () => {
     const card = screen.getByText("reference.png").closest("article");
     await userEvent.click(within(card as HTMLElement).getByRole("button", { name: /delete/i }));
 
-    expect(confirm).toHaveBeenCalledWith("Delete reference.png?");
+    expect(confirm).toHaveBeenCalledWith('Delete "reference.png" and remove its local file if uploaded?');
     expect(api.deleteAsset).toHaveBeenCalledWith(1);
     confirm.mockRestore();
   });

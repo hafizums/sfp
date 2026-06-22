@@ -128,8 +128,8 @@ export function AIStoryPanel({ projectId, workspace, audio, shots, onApplied }: 
         </button>
       </div>
 
-      <p className="muted-note">WaveSpeed video generation is not enabled yet.</p>
-      {hasExistingContent ? <p className="warning-note">Existing story, audio, or shot content found. Overwrites require confirmation.</p> : null}
+      <p className="muted-note">Uses your backend OpenAI key only. WaveSpeed video generation is not enabled yet.</p>
+      {hasExistingContent ? <p className="warning-note">Existing story, audio, or shot content found. Keep overwrite off to preserve your manual work.</p> : null}
       {operation ? <ProgressLoader operation={operation} elapsedSeconds={elapsedSeconds} /> : null}
       {error ? <div className="app-error">{error}</div> : null}
 
@@ -164,7 +164,7 @@ export function AIStoryPanel({ projectId, workspace, audio, shots, onApplied }: 
           </div>
 
           <button type="button" className="primary" onClick={applyPreview} disabled={loading}>
-            <Save size={16} /> Apply selected sections
+            <Save size={16} /> Apply checked sections to project
           </button>
         </div>
       ) : null}
@@ -204,7 +204,7 @@ function ProgressLoader({ operation, elapsedSeconds }: { operation: Exclude<Oper
       </ol>
       <p className="progress-hint">
         {operation === "generate"
-          ? "OpenAI generation is a single backend request, so progress is staged until the structured response returns. Large story packages can take up to two minutes."
+          ? "The backend sends one structured OpenAI request. Progress is staged while the package returns, which can take up to two minutes."
           : "Applying selected sections locally to the project database."}
       </p>
     </div>

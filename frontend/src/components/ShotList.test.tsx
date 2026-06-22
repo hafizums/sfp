@@ -132,6 +132,7 @@ describe("ShotList", () => {
     await userEvent.click(screen.getAllByRole("button", { name: "Copy" })[0]);
 
     expect(writeText).toHaveBeenCalledWith("storybook treehouse");
+    expect(await screen.findByText("Image prompt copied")).toBeInTheDocument();
   });
 
   it("saves status changes", async () => {

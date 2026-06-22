@@ -190,4 +190,13 @@ npm run build
 14. Confirm the deleted file URL no longer loads.
 15. Run `git status --short` and confirm uploaded files under `backend/uploads/` are not tracked.
 
+## Troubleshooting
+
+- Port `8010` already in use: stop the old backend process or run uvicorn on another port and update `VITE_API_BASE_URL`.
+- OpenAI key missing: set `OPENAI_API_KEY` in `.env`, `backend/.env`, or the backend shell before starting the backend.
+- AI request timed out: increase `OPENAI_STORY_TIMEOUT_SECONDS` or `OPENAI_PROMPT_TIMEOUT_SECONDS`, then restart the backend.
+- Uploaded asset does not preview: confirm the backend is running and the asset URL starts with the configured backend API origin.
+- Reset local data: stop the backend, delete `backend/short_film_planner.db`, and delete `backend/uploads/`, then restart the backend.
+- WaveSpeed is not integrated yet: videos are uploaded and tracked manually; the app does not generate videos.
+
 WaveSpeed video generation is not enabled yet.

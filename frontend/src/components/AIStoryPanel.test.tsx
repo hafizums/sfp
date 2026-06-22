@@ -122,7 +122,7 @@ describe("AIStoryPanel", () => {
     render(<AIStoryPanel projectId={1} workspace={emptyWorkspace} audio={emptyAudio} shots={[]} onApplied={vi.fn()} />);
 
     expect(screen.getByRole("button", { name: /generate story package/i })).toBeInTheDocument();
-    expect(screen.getByText(/wavespeed video generation is not enabled yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/uses your backend openai key only/i)).toBeInTheDocument();
   });
 
   it("shows loading state", async () => {
@@ -133,7 +133,7 @@ describe("AIStoryPanel", () => {
 
     expect(screen.getByRole("button", { name: /generating/i })).toBeDisabled();
     expect(screen.getByRole("status")).toHaveTextContent("Preparing story interview");
-    expect(screen.getByText(/OpenAI generation is a single backend request/i)).toBeInTheDocument();
+    expect(screen.getByText(/backend sends one structured openai request/i)).toBeInTheDocument();
   });
 
   it("renders preview sections", async () => {
@@ -161,7 +161,7 @@ describe("AIStoryPanel", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /generate story package/i }));
     await screen.findByText("Two friends light a floating garden.");
-    await userEvent.click(screen.getByRole("button", { name: /apply selected sections/i }));
+    await userEvent.click(screen.getByRole("button", { name: /apply checked sections/i }));
 
     expect(api.applyStoryPackage).toHaveBeenCalledWith(1, expect.objectContaining({ package: packagePreview }));
     expect(onApplied).toHaveBeenCalled();

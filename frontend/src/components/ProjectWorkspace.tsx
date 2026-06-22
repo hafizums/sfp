@@ -94,6 +94,16 @@ const emptyAudio: AudioPlan = {
 const tabs = ["Setup", "Interview", "Story", "Characters", "Locations", "Shots", "Assets", "Audio", "Checklist"] as const;
 type Tab = (typeof tabs)[number];
 
+const workflowSteps = [
+  "Create project",
+  "Fill interview",
+  "Generate story",
+  "Review boards",
+  "Generate prompts",
+  "Upload assets",
+  "Finalize",
+];
+
 type Props = {
   project: Project;
   onRefreshProject: () => Promise<void>;
@@ -172,6 +182,10 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
         {loading ? <span className="runtime-pill">Loading</span> : <span className="runtime-pill">{project.current_planned_runtime}s planned</span>}
       </div>
 
+      <ol className="workflow-rail" aria-label="Production workflow">
+        {workflowSteps.map((step, index) => <li key={step}><span>{index + 1}</span>{step}</li>)}
+      </ol>
+
       <nav className="tabs" aria-label="Project sections">
         {tabs.map((item) => (
           <button key={item} className={item === tab ? "active" : ""} onClick={() => setTab(item)}>{item}</button>
@@ -222,6 +236,7 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
           hidden={["id", "project_id"]}
           onChange={setWorkspace}
           onSave={() => api.saveWorkspace(project.id, workspace)}
+          helper="Draft or refine the story here. The AI package can fill this from the interview, then you can edit anything manually."
           extra={
             <AIStoryPanel
               projectId={project.id}
@@ -352,6 +367,7 @@ function TextSection<T extends object>({
   onChange,
   onSave,
   extra,
+  helper,
 }: {
   title: string;
   values: T;
@@ -360,10 +376,12 @@ function TextSection<T extends object>({
   onChange: (values: T) => void;
   onSave: () => Promise<unknown>;
   extra?: ReactNode;
+  helper?: string;
 }) {
   return (
     <form className="workspace-band" onSubmit={(event) => { event.preventDefault(); void onSave(); }}>
       <SectionHead label={title} action="Save" />
+      {helper ? <p className="muted-note">{helper}</p> : null}
       {(Object.keys(values) as (keyof T)[]).filter((key) => !hidden.includes(key)).map((key) => (
         <TextArea
           key={String(key)}
@@ -391,7 +409,13 @@ function CharacterSection({
   const [draft, setDraft] = useState<CharacterInput>(emptyCharacter);
   return (
     <section className="workspace-band">
-      <div className="section-heading compact"><h2>Character bible</h2></div>
+      <div className="section-heading compact">
+        <div>
+          <p className="eyebrow">Continuity</p>
+          <h2>Character bible</h2>
+        </div>
+      </div>
+      <p className="muted-note">Keep names, outfits, voices, and negative prompts consistent before generating shot prompts.</p>
       <form className="resource-form" onSubmit={(event) => { event.preventDefault(); void onCreate(draft).then(() => setDraft(emptyCharacter)); }}>
         <TextInput label="Name" value={draft.name} onChange={(value) => setDraft({ ...draft, name: value })} />
         <TextInput label="Role" value={draft.role} onChange={(value) => setDraft({ ...draft, role: value })} />
@@ -452,7 +476,13 @@ function LocationSection({
   const [draft, setDraft] = useState<LocationInput>(emptyLocation);
   return (
     <section className="workspace-band">
-      <div className="section-heading compact"><h2>Location bible</h2></div>
+      <div className="section-heading compact">
+        <div>
+          <p className="eyebrow">Continuity</p>
+          <h2>Location bible</h2>
+        </div>
+      </div>
+      <p className="muted-note">Use these location notes to keep lighting, palette, and safety details stable across prompts.</p>
       <form className="resource-form" onSubmit={(event) => { event.preventDefault(); void onCreate(draft).then(() => setDraft(emptyLocation)); }}>
         <TextInput label="Name" value={draft.name} onChange={(value) => setDraft({ ...draft, name: value })} />
         <TextArea label="Description" value={draft.description} onChange={(value) => setDraft({ ...draft, description: value })} />

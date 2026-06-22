@@ -123,9 +123,9 @@ export function AIShotPromptPanel({ projectId, shots, selectedShotId, onApplied 
         </button>
       </div>
 
-      <p className="muted-note">This prepares prompts only. WaveSpeed video generation is not enabled yet.</p>
+      <p className="muted-note">Uses your backend OpenAI key only. This prepares copy-ready prompts; WaveSpeed video generation is not enabled yet.</p>
       {shots.length === 0 ? <p className="warning-note">Add storyboard shots before generating Wan 2.2 prompts.</p> : null}
-      {hasExistingPrompts ? <p className="warning-note">Selected shots already contain prompt fields. Overwrites require confirmation.</p> : null}
+      {hasExistingPrompts ? <p className="warning-note">Selected shots already contain prompt fields. Keep overwrite off to preserve manual prompt edits.</p> : null}
 
       <div className="apply-controls">
         <Choice
@@ -203,7 +203,7 @@ function ProgressLoader({ operation, elapsedSeconds }: { operation: Exclude<Oper
       </ol>
       <p className="progress-hint">
         {operation === "generate"
-          ? "OpenAI prompt generation is a single backend request, so progress is staged until the structured response returns."
+          ? "The backend sends one structured OpenAI prompt request. Progress is staged until the packages return."
           : "Applying selected prompt packages locally to the project database."}
       </p>
     </div>

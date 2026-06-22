@@ -54,6 +54,7 @@ def test_upload_image_asset(client: TestClient, tmp_path: Path, monkeypatch) -> 
     assert asset["mime_type"] == "image/png"
     assert asset["size_bytes"] > 0
     assert asset["preview_url"] == f"/api/assets/{asset['id']}/file"
+    assert asset["download_url"] == f"/api/assets/{asset['id']}/file"
     assert (tmp_path / asset["relative_path"]).is_file()
 
 
@@ -125,6 +126,31 @@ def test_delete_asset_removes_metadata_and_file(client: TestClient, tmp_path: Pa
     assert deleted.status_code == 204
     assert not stored_path.exists()
     assert client.get(f"/api/assets/{asset['id']}/file").status_code == 404
+
+
+def test_delete_project_removes_uploaded_asset_files(client: TestClient, tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("ASSET_STORAGE_DIR", str(tmp_path))
+    project = create_project(client)
+    asset = upload_asset(client, project["id"], "project-delete.png", b"\x89PNG\r\n\x1a\nsmall", "image/png", "start_frame")
+    stored_path = tmp_path / asset["relative_path"]
+    assert stored_path.is_file()
+
+    deleted = client.delete(f"/api/projects/{project['id']}")
+
+    assert deleted.status_code == 204
+    assert not stored_path.exists()
+
+
+def test_missing_uploaded_file_returns_clean_error(client: TestClient, tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("ASSET_STORAGE_DIR", str(tmp_path))
+    project = create_project(client)
+    asset = upload_asset(client, project["id"], "missing.png", b"\x89PNG\r\n\x1a\nsmall", "image/png", "start_frame")
+    (tmp_path / asset["relative_path"]).unlink()
+
+    response = client.get(f"/api/assets/{asset['id']}/file")
+
+    assert response.status_code == 404
+    assert "Asset file not found" in response.json()["detail"]
 
 
 def test_path_traversal_filename_is_sanitized(client: TestClient, tmp_path: Path, monkeypatch) -> None:

@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import models, schemas, services
+from ..asset_storage import delete_asset_file
 from ..database import get_db
 
 router = APIRouter()
@@ -44,6 +45,9 @@ def update_project(
 @router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_project(project_id: int, db: Session = Depends(get_db)) -> Response:
     project = services.project_or_404(db, project_id)
+    asset_paths = [asset.relative_path for asset in project.assets]
     db.delete(project)
     db.commit()
+    for relative_path in asset_paths:
+        delete_asset_file(relative_path)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

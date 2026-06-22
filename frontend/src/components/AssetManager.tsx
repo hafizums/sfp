@@ -25,6 +25,17 @@ const emptyUpload: UploadDraft = {
   file: null,
 };
 
+const assetTypeLabels: Record<AssetType, string> = {
+  character_reference: "Character reference",
+  location_reference: "Location reference",
+  start_frame: "Start frame",
+  end_frame: "End frame",
+  generated_video: "Generated video",
+  audio: "Audio",
+  subtitle: "Subtitle",
+  other: "Other",
+};
+
 type Props = {
   projectId: number;
   shots: Shot[];
@@ -68,7 +79,7 @@ export function AssetManager({ projectId, shots, assets, onAssetsChange }: Props
   }
 
   async function deleteAsset(asset: Asset) {
-    if (!window.confirm(`Delete ${assetLabel(asset)}?`)) {
+    if (!window.confirm(`Delete "${assetLabel(asset)}" and remove its local file if uploaded?`)) {
       return;
     }
     await api.deleteAsset(asset.id);
@@ -83,10 +94,11 @@ export function AssetManager({ projectId, shots, assets, onAssetsChange }: Props
           <h2>Asset Upload and Preview</h2>
         </div>
       </div>
+      <p className="muted-note">Upload generated images, video, audio, and subtitle files here. Files stay local and are served through the backend.</p>
 
       <form className="asset-upload-form" onSubmit={(event) => { event.preventDefault(); void uploadAsset(); }}>
-        <label>Asset type<AssetTypeSelect value={uploadDraft.asset_type} onChange={(asset_type) => setUploadDraft({ ...uploadDraft, asset_type })} /></label>
-        <label>Shot<ShotSelect shots={shots} value={uploadDraft.shot_id} onChange={(shot_id) => setUploadDraft({ ...uploadDraft, shot_id })} /></label>
+        <label>Upload type<AssetTypeSelect value={uploadDraft.asset_type} onChange={(asset_type) => setUploadDraft({ ...uploadDraft, asset_type })} /></label>
+        <label>Attach to<ShotSelect shots={shots} value={uploadDraft.shot_id} onChange={(shot_id) => setUploadDraft({ ...uploadDraft, shot_id })} /></label>
         <label>File<input type="file" onChange={(event) => setUploadDraft({ ...uploadDraft, file: event.target.files?.[0] ?? null })} /></label>
         <label>Notes<textarea value={uploadDraft.notes} onChange={(event) => setUploadDraft({ ...uploadDraft, notes: event.target.value })} /></label>
         <button className="primary" type="submit" disabled={uploading}><Upload size={16} /> {uploading ? "Uploading" : "Upload asset"}</button>
@@ -95,8 +107,8 @@ export function AssetManager({ projectId, shots, assets, onAssetsChange }: Props
       {error ? <div className="app-error">{error}</div> : null}
 
       <form className="asset-form" onSubmit={(event) => { event.preventDefault(); void createMetadata(); }}>
-        <label>Asset type<AssetTypeSelect value={metadataDraft.asset_type} onChange={(asset_type) => setMetadataDraft({ ...metadataDraft, asset_type })} /></label>
-        <label>Shot<ShotSelect shots={shots} value={metadataDraft.shot_id} onChange={(shot_id) => setMetadataDraft({ ...metadataDraft, shot_id })} /></label>
+        <label>Tracked type<AssetTypeSelect value={metadataDraft.asset_type} onChange={(asset_type) => setMetadataDraft({ ...metadataDraft, asset_type })} /></label>
+        <label>Attach to<ShotSelect shots={shots} value={metadataDraft.shot_id} onChange={(shot_id) => setMetadataDraft({ ...metadataDraft, shot_id })} /></label>
         <label>Filename or path<input value={metadataDraft.filename_or_path} onChange={(event) => setMetadataDraft({ ...metadataDraft, filename_or_path: event.target.value })} /></label>
         <label>Notes<textarea value={metadataDraft.notes} onChange={(event) => setMetadataDraft({ ...metadataDraft, notes: event.target.value })} /></label>
         <button className="ghost" type="submit"><Plus size={16} /> Track metadata</button>
@@ -109,7 +121,7 @@ export function AssetManager({ projectId, shots, assets, onAssetsChange }: Props
 
 export function AssetGrid({ assets, shots, onDelete }: { assets: Asset[]; shots: Shot[]; onDelete: (asset: Asset) => void }) {
   if (!assets.length) {
-    return <div className="empty-state">No assets attached yet.</div>;
+    return <div className="empty-state">No assets yet. Upload generated files or track an external filename/path after you create project shots.</div>;
   }
   return (
     <div className="asset-grid">
@@ -127,11 +139,16 @@ export function AssetPreviewCard({ asset, shot, onDelete }: { asset: Asset; shot
       <div className="asset-card-heading">
         <div>
           <strong>{assetLabel(asset)}</strong>
-          <span>{asset.asset_type}{shot ? ` | Shot ${shot.shot_number}` : " | Project-level"}</span>
+          <span>{assetTypeLabels[asset.asset_type]}{shot ? ` | Shot ${shot.shot_number}` : " | Project-level"}</span>
         </div>
         {onDelete ? <button className="danger" type="button" onClick={() => onDelete(asset)}><Trash2 size={16} /> Delete</button> : null}
       </div>
       <AssetPreview asset={asset} fileUrl={fileUrl} />
+      <div className="asset-meta">
+        <span>{asset.mime_type || "metadata only"}</span>
+        <span>{asset.size_bytes ? formatBytes(asset.size_bytes) : "no file stored"}</span>
+        {shot ? <span>Shot {shot.shot_number}: {shot.purpose || "Untitled shot"}</span> : <span>Project-level</span>}
+      </div>
       {asset.notes ? <p>{asset.notes}</p> : null}
       {fileUrl ? <a className="asset-link" href={fileUrl} target="_blank" rel="noreferrer">Open file</a> : null}
     </article>
@@ -160,7 +177,7 @@ function AssetPreview({ asset, fileUrl }: { asset: Asset; fileUrl: string }) {
 function AssetTypeSelect({ value, onChange }: { value: AssetType; onChange: (value: AssetType) => void }) {
   return (
     <select value={value} onChange={(event) => onChange(event.target.value as AssetType)}>
-      {assetTypes.map((type) => <option key={type}>{type}</option>)}
+      {assetTypes.map((type) => <option key={type} value={type}>{assetTypeLabels[type]}</option>)}
     </select>
   );
 }
@@ -180,4 +197,14 @@ function assetLabel(asset: Asset): string {
 
 function isTextAsset(asset: Asset): boolean {
   return asset.mime_type.startsWith("text/") || asset.mime_type === "application/x-subrip";
+}
+
+function formatBytes(sizeBytes: number): string {
+  if (sizeBytes < 1024) {
+    return `${sizeBytes} B`;
+  }
+  if (sizeBytes < 1024 * 1024) {
+    return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
