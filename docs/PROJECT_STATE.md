@@ -1,6 +1,6 @@
 # Short Film Planner Studio Project State
 
-Last reviewed against milestone `CHARACTER_LOCATION_ANCHOR_LOCK_01`.
+Last reviewed against milestone `START_END_FRAME_INTERPOLATION_LOCK_01`.
 
 ## Purpose
 
@@ -96,9 +96,22 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 ## AI Features
 
 - Story package generation uses OpenAI from the backend only. The guided interview is optional; preview uses the best available context from the Production Bible, any filled interview answers, manual Story workspace fields, existing characters/locations/shots, and meaningful project setup defaults. It creates a structured preview containing story workspace content, character suggestions, location suggestions, storyboard shots, audio plan, and safety review. Applying is user-controlled and overwrite-safe.
-- Wan 2.2 shot prompt generation uses OpenAI from the backend only. It does not require interview answers. It includes Production Bible context for visual style, camera language, continuity, negative prompt rules, safety, and final delivery specs, plus existing shot context and locked character/location anchor metadata. It creates structured prompt packages for existing shots using a strict GPT image framework for `image_prompt`, `start_frame_prompt`, and `end_frame_prompt`, plus a strict Wan framework for `video_prompt`: cast/count, locked setting/time, camera/framing, beginning-middle-end action timeline, motion boundaries, positive constraints, and start/end-frame consistency. It does not call OpenAI image generation, WaveSpeed, or create files or videos.
+- Wan 2.2 shot prompt generation uses OpenAI from the backend only. It does not require interview answers. It includes Production Bible context for visual style, camera language, continuity, negative prompt rules, safety, and final delivery specs, plus existing shot context and locked character/location anchor metadata. It creates structured prompt packages for existing shots using a strict GPT image framework for `image_prompt`, `start_frame_prompt`, and `end_frame_prompt`, plus a strict Wan framework for `video_prompt`: cast/count, locked setting/time, camera/framing, beginning-middle-end action timeline, motion boundaries, positive constraints, and start/end-frame consistency. Start/end frame instructions explicitly lock the same camera position, camera height, camera angle, framing, subject scale, lens feel/field of view, background layout, perspective, scene continuity, and lighting direction unless the shot explicitly changes it. End frames should be the same shot with only one small deliberate visual change, and camera movement must stay subtle, continuous, and interpolation-safe. It does not call OpenAI image generation, WaveSpeed, or create files or videos.
 - Anchor images stay local. Prompt generation includes only anchor filenames, lock state, and continuity notes, not binary files or local file paths.
 - Missing API keys, provider errors, timeouts, invalid responses, missing-story-context states, no-shot states, and cross-project shot IDs have test coverage.
+
+Start/end interpolation checklist:
+
+```text
+- Same camera position?
+- Same framing?
+- Same subject scale?
+- Same background geometry?
+- Same lighting direction?
+- Same characters only?
+- Same props?
+- Only a small end-state change?
+```
 
 ## Production Bible and Quality Gates
 
@@ -144,7 +157,7 @@ Backend tests cover:
 - AI story package preview/apply paths using fake providers
 - optional interview story preview paths using interview, manual workspace, shots, Production Bible, and project setup context
 - AI shot prompt preview/apply paths using fake providers
-- strict Wan prompt-generation instructions, including cast/count, camera/framing, action timeline, motion boundaries, positive constraints, start/end-frame consistency, negative prompt limitations, no extra characters, no identity drift, no sudden scene change, Production Bible context, and optional-interview behavior
+- strict Wan prompt-generation instructions, including cast/count, camera/framing, action timeline, motion boundaries, positive constraints, start/end-frame consistency, start/end interpolation locks, negative prompt limitations, no extra characters, no identity drift, no sudden scene change, Production Bible context, and optional-interview behavior
 - strict GPT image prompt-generation instructions for storyboard/reference stills, exact start frames, exact end frames, visible character count, named characters, character appearance/outfit, locked location, composition, lighting/color palette, Production Bible style, still-prompt motion limits, no text/logos/watermarks, no extra characters, and no identity drift
 - Production Bible default creation, update, lock/unlock, and locked-update failure
 - AI prompt context including Production Bible content
@@ -156,7 +169,7 @@ Frontend unit tests cover:
 
 - dashboard create/edit/delete confirmation
 - story AI panel render/loading/preview/apply/error/warnings
-- Wan prompt panel render/loading/preview/apply/error/no-shot state, strict Wan helper text, GPT image prompt helper text, and locked-anchor helper text
+- Wan prompt panel render/loading/preview/apply/error/no-shot state, strict Wan helper text, GPT image prompt helper text, start/end interpolation helper text, and locked-anchor helper text
 - character/location anchor selector, preview, lock/unlock behavior, and protected locked anchor fields
 - shot runtime, reorder, status update, copy feedback, attached asset display
 - Production Bible render, lock/unlock behavior, locked fields, save, and negative-rule copy
@@ -170,7 +183,7 @@ E2E tests cover:
 - prompt copy flow
 - asset upload/preview/delete flow
 - AI panel safe-state flow without calling OpenAI
-- manual story start without filling the interview, locked character/location anchors, GPT image helper text, strict Wan helper text, and prompt package copy flow
+- manual story start without filling the interview, locked character/location anchors, GPT image helper text, strict Wan helper text, start/end interpolation helper text, and prompt package copy flow
 - production bible lock and shot quality gate persistence flow
 - shot take creation, prompt snapshot, approval handoff, and manual asset linking flow
 

@@ -157,8 +157,8 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
     setInterview(nextInterview);
     setWorkspace(nextWorkspace);
     setProductionBible(nextProductionBible);
-    setCharacters(nextCharacters);
-    setLocations(nextLocations);
+    setCharacters((current) => mergeFetchedById(nextCharacters, current));
+    setLocations((current) => mergeFetchedById(nextLocations, current));
     setShots(nextShots);
     setAssets(nextAssets);
     setAudio(nextAudio);
@@ -376,6 +376,11 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
       )}
     </section>
   );
+}
+
+function mergeFetchedById<T extends { id: number }>(fetched: T[], current: T[]): T[] {
+  const fetchedIds = new Set(fetched.map((item) => item.id));
+  return [...fetched, ...current.filter((item) => !fetchedIds.has(item.id))];
 }
 
 function SectionHead({ label, action }: { label: string; action?: string }) {

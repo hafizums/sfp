@@ -72,6 +72,12 @@ describe("AIShotPromptPanel", () => {
     expect(screen.getByText(/image prompts are optimized for gpt image generation: storyboard still, exact start frame, and exact end frame/i)).toBeInTheDocument();
   });
 
+  it("renders the interpolation helper text", () => {
+    render(<AIShotPromptPanel projectId={1} shots={[shot]} selectedShotId={1} onApplied={vi.fn()} />);
+
+    expect(screen.getByText(/same camera position, framing, and background layout for smoother video interpolation/i)).toBeInTheDocument();
+  });
+
   it("renders the locked anchor helper text", () => {
     render(<AIShotPromptPanel projectId={1} shots={[shot]} selectedShotId={1} onApplied={vi.fn()} />);
 
@@ -143,6 +149,7 @@ describe("AIShotPromptPanel", () => {
     expect(screen.getByText(/add storyboard shots before generating/i)).toBeInTheDocument();
     expect(screen.getByText(/strict framework: cast count/i)).toBeInTheDocument();
     expect(screen.getByText(/gpt image generation: storyboard still/i)).toBeInTheDocument();
+    expect(screen.getByText(/smoother video interpolation/i)).toBeInTheDocument();
     expect(screen.getByText(/locked character and location anchors/i)).toBeInTheDocument();
   });
 });

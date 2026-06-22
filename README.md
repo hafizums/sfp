@@ -76,7 +76,7 @@ Wan 2.2 prompt generation does not require the interview. It only requires story
 
 Wan 2.2 can improvise if prompts are vague, so the app generates prompt packages with a strict default framework for production review. Generated prompts should name the exact cast count, lock the setting and time of day, specify camera/framing, describe a beginning-middle-end action timeline, and place positive motion boundaries directly in the video prompt. The negative prompt is still generated for artifacts and safety, but it is not the only place important behavior controls appear.
 
-Start frame prompts describe the exact opening frame: character positions, pose, expression, setting, and camera/framing. End frame prompts keep the same characters and setting with only a small deliberate change, making them safer for start/end image-to-video workflows. If LoRAs are used outside the app, test short clips first because LoRAs can change motion, behavior, identity, or style.
+Start frame prompts describe the exact opening frame: character positions, pose, expression, setting, and camera/framing. End frame prompts keep the same characters and setting with only a small deliberate change, making them safer for start/end image-to-video workflows. Start/end interpolation often fails when the two images drift in camera position, framing, background geometry, subject scale, lens feel, or lighting direction, so generated prompts now explicitly lock the same camera position, same framing, same background/location layout, same perspective, and same scene continuity. Camera movement is acceptable only when the shot calls for a simple continuous move and the end frame remains a subtle continuation instead of a radical re-composition. If LoRAs are used outside the app, test short clips first because LoRAs can change motion, behavior, identity, or style.
 
 See `docs/WAN_PROMPTING_GUIDE.md` for the full checklist and recommended workflow.
 
@@ -85,6 +85,19 @@ See `docs/WAN_PROMPTING_GUIDE.md` for the full checklist and recommended workflo
 The same prompt package also separates still-image prompts from Wan motion prompts. `image_prompt` is optimized as a storyboard/reference still for judging composition, character consistency, location identity, lighting, color palette, camera framing, and Production Bible style. `start_frame_prompt` is the exact first frame for image-to-video, and `end_frame_prompt` is the exact final frame with the same characters and setting plus one small deliberate visual change.
 
 GPT image prompts should use concrete visible details, exact character count, named characters, character appearance/outfit, locked location, stable composition, age 4+ mood, and no text/logos/watermarks/UI/subtitles. See `docs/GPT_IMAGE_PROMPTING_GUIDE.md` for still-image prompt checklists and examples.
+
+Start/end interpolation checklist:
+
+```text
+- Same camera position?
+- Same framing?
+- Same subject scale?
+- Same background geometry?
+- Same lighting direction?
+- Same characters only?
+- Same props?
+- Only a small end-state change?
+```
 
 ## Character and Location Anchors
 
@@ -272,7 +285,8 @@ npm run build
 13. Use the individual prompt copy buttons and `Copy Wan 2.2 package`.
 14. Confirm no WaveSpeed API call happens; this prepares prompts only.
 15. Confirm locked character/location anchor filenames and notes are reflected in prompt intent when available.
-16. Create start/end frames, test short external clips first, create takes, and approve the best take.
+16. Compare start and end prompts side by side before generating images: confirm the same camera position, same framing, same subject scale, same background geometry, same lighting direction, same characters, same props, and only one small end-state change.
+17. Create start/end frames, test short external clips first, create takes, and approve the best take.
 
 ## Manual Asset Upload Test
 

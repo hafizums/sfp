@@ -6,8 +6,27 @@ GPT image prompts serve a different job than Wan video prompts. Still-image prom
 
 - `image_prompt`: storyboard/reference still. Use it to judge visual subject, composition, character consistency, location identity, lighting, color palette, camera framing, and Production Bible style. It does not need to be the exact first frame.
 - `start_frame_prompt`: exact first frame. Use it to generate the opening image for image-to-video with exact positions, pose, expression, hands, props, camera/framing, lighting, and location.
-- `end_frame_prompt`: exact final frame. Use the same characters, setting, and usually the same camera/framing, with one small deliberate visual change from the start frame.
+- `end_frame_prompt`: exact final frame. Use the same characters, setting, camera position, framing, subject scale, background layout, perspective, and lighting direction, with one small deliberate visual change from the start frame.
 - `video_prompt`: Wan motion prompt. Use it for the simple continuous action between the start and end images.
+
+## Start/End Interpolation Lock
+
+Start/end image-to-video fails easily when the two stills describe a slightly different background, camera angle, lens feel, subject scale, or room geography. Treat the start and end prompts as one locked camera setup. The start frame is the exact first frame and should be fully stable, unambiguous, and free of unnecessary motion language. The end frame is the exact final frame in the same shot with the same camera and background, plus only one small visible state change.
+
+Use explicit wording such as same camera position, same framing, same background, same composition, same location layout, same perspective, and same scene continuity. If the shot calls for camera movement, keep the end frame a subtle continuation of that move rather than a new composition.
+
+Start/end interpolation checklist:
+
+```text
+- Same camera position?
+- Same framing?
+- Same subject scale?
+- Same background geometry?
+- Same lighting direction?
+- Same characters only?
+- Same props?
+- Only a small end-state change?
+```
 
 ## GPT Image Checklist
 
@@ -39,11 +58,11 @@ Use `image_prompt` for a polished 16:9 cinematic still frame that shows the inte
 
 ## Start-Frame Tips
 
-The start frame should be exact and stable. Describe where every named character is, their pose, expression, hand placement, prop placement, camera/framing, lighting, and location. Avoid motion verbs unless they describe a frozen pose.
+The start frame should be exact and stable. Describe where every named character is, their pose, expression, hand placement, prop placement, camera position, camera height, camera angle, framing, subject scale, lens feel / field of view, background layout, perspective, lighting, and location. Avoid motion verbs unless they describe a frozen pose.
 
 ## End-Frame Tips
 
-The end frame should preserve the same scene and same named characters. Change only one planned visual element: a lifted map, a warmer smile, a door now slightly open, or a character now holding a prop. Avoid new characters, new locations, or surprise prop changes.
+The end frame should preserve the same scene, same camera, same background, same composition, same location layout, and same named characters. Change only one planned visual element: a lifted map, a warmer smile, a door now slightly open, or a character now holding an existing prop. Avoid new characters, new locations, surprise prop changes, zoomed-in framing after a wide start, different geography, or radical re-composition unless the shot explicitly requires it.
 
 ## Continuity Checklist
 
@@ -52,6 +71,7 @@ The end frame should preserve the same scene and same named characters. Change o
 - Camera language follows the Production Bible.
 - Color palette and style match the locked bible.
 - Start and end frames differ by one clear, deliberate visual change.
+- Camera movement, when present, remains subtle and interpolation-safe.
 - Locked character and location anchors are reviewed before prompt generation.
 
 ## Example

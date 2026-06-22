@@ -248,6 +248,34 @@ def test_prompt_generation_instructions_use_gpt_image_framework(client: TestClie
     assert "Strict Wan prompt framework" in prompt
 
 
+def test_prompt_generation_instructions_lock_start_end_interpolation(client: TestClient) -> None:
+    project = create_project(client)
+    shot = create_shot(client, project["id"], camera_movement="gentle pan right")
+    provider = FakeShotPromptProvider([package_payload(shot)])
+    client.app.dependency_overrides[get_shot_prompt_provider] = lambda: provider
+
+    response = client.post(f"/api/projects/{project['id']}/ai/shot-prompts/preview", json={})
+
+    assert response.status_code == 200
+    prompt = provider.prompt
+    assert "Start/end frame interpolation lock" in prompt
+    assert "same camera position" in prompt
+    assert "same camera height" in prompt
+    assert "same camera angle" in prompt
+    assert "same framing" in prompt
+    assert "same subject scale" in prompt
+    assert "same lens feel / field of view" in prompt
+    assert "same background layout" in prompt
+    assert "same perspective" in prompt
+    assert "same scene continuity" in prompt
+    assert "same lighting direction unless the shot explicitly changes it" in prompt
+    assert "only a small deliberate visual change" in prompt
+    assert "avoid radical recomposition" in prompt
+    assert "Avoid new props/characters" in prompt
+    assert "If shot data calls for camera movement" in prompt
+    assert "interpolation-safe" in prompt
+
+
 def test_wan_prompt_preview_does_not_require_interview(client: TestClient) -> None:
     project = create_project(client)
     shot = create_shot(client, project["id"], "Manual shot list starts the project")

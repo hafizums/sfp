@@ -20,6 +20,20 @@ PROMPT_FIELDS = [
     "negative_prompt",
 ]
 
+START_END_INTERPOLATION_LOCK = """
+Start/end frame interpolation lock:
+- Treat start_frame_prompt and end_frame_prompt as a matched image pair for Wan 2.2 start/end interpolation.
+- Both prompts must explicitly use continuity language such as "same camera position", "same framing", "same background", "same composition", "same location layout", "same perspective", and "same scene continuity".
+- Shared camera lock: the start and end frame must keep the same camera position, same camera height, same camera angle, same framing, same subject scale in frame, same lens feel / field of view, same composition structure, same background layout, same horizon/perspective, and same lighting direction unless the shot explicitly changes it.
+- start_frame_prompt purpose: exact first frame, fully stable, no ambiguity, no unnecessary motion language, exact visible starting pose and placement.
+- end_frame_prompt purpose: exact final frame, same camera/background as the start frame, one small visible state change, no extra scene drift.
+- End frame continuity rule: the end frame is the same shot, same camera, same scene, same characters, and same background as the start frame, with only a small deliberate visual change.
+- Allowed end-frame changes include: hand moves upward, character turns head slightly, character now holds an existing object, expression changes gently, or one step forward if framing and subject scale remain consistent.
+- Not allowed unless explicitly required: different background arrangement, different camera angle, different lens feel, zoomed-in end frame when start is wide, new props appearing, new characters appearing, subject suddenly much larger/smaller in frame, different side of the room, or different geography.
+- If shot data calls for camera movement, keep start and end frames interpolation-safe: they must still feel like the same continuous shot; the end frame may shift slightly only when the movement is simple and expected; avoid radical recomposition between start and end; prefer subtle changes over dramatic reframing.
+- Avoid new props/characters, sudden scene changes, and radical recomposition in both start_frame_prompt and end_frame_prompt.
+""".strip()
+
 
 def preview_shot_prompts(
     db: Session,
@@ -140,11 +154,13 @@ Output requirements:
 - video_prompt: 80-140 words where possible, with cast/count, setting/time of day, locked camera/framing, a simple continuous action timeline, motion boundaries, Production Bible style/mood, and positive constraints
 - negative_prompt: concise but complete GPT image and Wan video safety/artifact list; include no text, no logo, no watermark, no subtitles, no UI, no extra fingers, no distorted hands, no distorted faces, no identity drift, no extra characters, no duplicate characters, no sudden scene change, no jump cuts, no unsafe content, no horror, no weapons, and no blood
 
+{START_END_INTERPOLATION_LOCK}
+
 Strict GPT image prompt framework:
 - image_prompt purpose: storyboard/reference still for judging visual design, character consistency, location identity, lighting, and camera framing. It should be a polished 16:9 still image showing the intended shot composition, not necessarily the exact first frame.
 - image_prompt must include exact visible character count, named characters, character appearance and outfit from the character bible, locked location from the location bible, shot purpose/action as a frozen still moment, camera framing and angle, composition, lighting, color palette, Production Bible style, age 4+ safe mood, and no text/logos/watermarks/UI/subtitles.
-- start_frame_prompt purpose: exact first frame for image-to-video. It must include the same named characters, exact starting position, exact pose, expression, what hands or props are doing, camera/framing, lighting, location, no new elements, no extra people, and no motion language that belongs only in video_prompt.
-- end_frame_prompt purpose: exact final frame for start/end image-to-video. It must include the same named characters, same location, same camera/framing unless the shot explicitly requires a change, one small deliberate visual change from the start frame, final pose/expression, stable composition, no extra characters, no new location, and no surprise prop changes.
+- start_frame_prompt purpose: exact first frame for image-to-video. It must include the same named characters, exact starting position, exact pose, expression, what hands or props are doing, same camera position, same camera height, same camera angle, same framing, same subject scale, same lens feel / field of view, same composition, same background, same location layout, same perspective, same scene continuity, lighting, location, no new elements, no extra people, and no motion language that belongs only in video_prompt.
+- end_frame_prompt purpose: exact final frame for start/end image-to-video. It must include the same named characters, same location, same camera position, same camera height, same camera angle, same framing, same subject scale, same lens feel / field of view, same composition, same background, same location layout, same perspective, same scene continuity, same lighting direction unless explicitly changed, one small deliberate visual change from the start frame, final pose/expression, stable composition, no extra characters, no new location, no new props unless explicitly required, no surprise prop changes, and avoid radical recomposition.
 - Image prompt style rules: use concrete visible details; avoid vague cinematic-only wording; avoid too many simultaneous actions; avoid motion verbs in still prompts unless describing a frozen moment; prefer "standing with one hand on the chest rim" over "opens the chest dramatically"; prefer "soft smile, eyes focused on the map" over vague "emotional"; keep style tags after the core composition; add "16:9 cinematic still frame" or aspect ratio where useful; add "no text, no logo, no watermark, no subtitles, no UI."
 - Continuity rules: image prompts must preserve face shape, age, hairstyle, outfit, key props, location geography, color palette, lighting direction, and camera language from the Production Bible.
 
@@ -157,6 +173,7 @@ Strict Wan prompt framework:
 - Positive constraints: important behavior controls must appear positively in image_prompt, start_frame_prompt, end_frame_prompt, and especially video_prompt. Do not rely only on the negative prompt for obedience.
 - Visual style and mood: use Production Bible visual style, color palette, lighting, safety rules, and camera language.
 - Start/end frame consistency: start_frame_prompt describes exactly the opening frame; end_frame_prompt describes the same scene and same characters with only one small clear change suitable for start/end image-to-video.
+- Start/end interpolation safety: start and end image prompts must preserve the same camera position, framing, subject scale, background layout, perspective, scene continuity, and lighting direction unless the shot explicitly changes it. If camera movement is requested, keep the change subtle and continuous, avoid radical recomposition, and do not introduce new props or characters.
 - LoRA caution: if notes mention LoRAs, warn that LoRAs can change motion, behavior, identity, or style and should be tested with short clips first.
 - No extra characters: unless a shot explicitly allows background people, do not introduce any extra characters.
 - No identity drift and no sudden scene change must be controlled in the video_prompt and repeated in negative_prompt.

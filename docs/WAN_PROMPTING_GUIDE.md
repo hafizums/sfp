@@ -4,6 +4,8 @@ Wan 2.2 prompts should be structured because vague cinematic wording can lead to
 
 Use the GPT image prompts first: `image_prompt` for the storyboard/reference still, `start_frame_prompt` for the exact first frame, and `end_frame_prompt` for the exact final frame. Then use `video_prompt` to control the Wan motion between those images. See `GPT_IMAGE_PROMPTING_GUIDE.md` for the still-image framework.
 
+Start/end interpolation fails when the opening and closing stills quietly drift into different shots: different camera position, different framing, different subject scale, different background geometry, different lens feel, or different lighting direction. Generated start/end prompts should use the same camera position, same framing, same background/location layout, same perspective, and same scene continuity. The end frame should show only one small deliberate state change. Camera movement is acceptable when the shot explicitly asks for it, but the start and end frames should still feel like a subtle continuous move, not a new composition.
+
 If character or location anchors are locked, prompt generation uses their filenames and continuity notes as visual source-of-truth context. Anchor images are not sent to OpenAI; they remain local reference assets.
 
 ## Prompt Checklist
@@ -18,7 +20,20 @@ If character or location anchors are locked, prompt generation uses their filena
 
 ## Start And End Frames
 
-Start frame prompts should describe the exact opening frame: character positions, pose, expression, setting, and camera/framing. End frame prompts should keep the same scene and same characters, allowing only one small clear change from the opening frame. Do not add new characters or props unless the shot explicitly requires them.
+Start frame prompts should describe the exact opening frame: character positions, pose, expression, setting, camera position, camera height, camera angle, framing, subject scale, lens feel / field of view, perspective, background layout, and lighting direction. End frame prompts should keep the same scene, same characters, same camera/background, same composition, and same location layout, allowing only one small clear change from the opening frame. Do not add new characters or props unless the shot explicitly requires them. Avoid radical recomposition, zoom jumps, new room geography, or a different side of the location.
+
+Start/end interpolation checklist:
+
+```text
+- Same camera position?
+- Same framing?
+- Same subject scale?
+- Same background geometry?
+- Same lighting direction?
+- Same characters only?
+- Same props?
+- Only a small end-state change?
+```
 
 ## LoRA Caution
 
@@ -27,10 +42,11 @@ LoRAs can change motion, behavior, identity, and style even when the text prompt
 ## Recommended Workflow
 
 1. Generate prompts.
-2. Review prompts manually.
-3. Keep character count strict.
-4. Keep motion simple.
-5. Create the storyboard/reference still and exact start/end frames.
-6. Test short clips first with the strict Wan motion prompt.
-7. Create takes.
-8. Approve the best take.
+2. Review start and end prompts side by side before generating images.
+3. Confirm the same camera/framing/background and only one small end-state change.
+4. Keep character count strict.
+5. Keep motion simple.
+6. Create the storyboard/reference still and exact start/end frames.
+7. Test short clips first with the strict Wan motion prompt.
+8. Create takes.
+9. Approve the best take.
