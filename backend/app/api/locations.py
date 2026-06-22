@@ -21,6 +21,7 @@ def create_location(
     project_id: int, payload: schemas.LocationBase, db: Session = Depends(get_db)
 ) -> models.Location:
     services.project_or_404(db, project_id)
+    services.validate_location_anchor_asset(db, project_id, payload.anchor_asset_id)
     location = models.Location(project_id=project_id, **payload.model_dump())
     db.add(location)
     db.commit()
@@ -35,10 +36,7 @@ def update_location(
     location = db.get(models.Location, location_id)
     if location is None:
         raise services.not_found("Location")
-    services.apply_updates(location, payload)
-    db.commit()
-    db.refresh(location)
-    return location
+    return services.update_location(db, location, payload)
 
 
 @router.delete("/locations/{location_id}", status_code=204)

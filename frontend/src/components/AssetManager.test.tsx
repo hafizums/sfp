@@ -12,6 +12,7 @@ vi.mock("../api/client", () => ({
     uploadAsset: vi.fn(),
     createAsset: vi.fn(),
     deleteAsset: vi.fn(),
+    listAssets: vi.fn(),
     assetFileUrl: vi.fn((asset: Asset) => asset.preview_url),
   },
 }));
@@ -68,6 +69,7 @@ describe("AssetManager", () => {
     vi.mocked(api.uploadAsset).mockReset();
     vi.mocked(api.createAsset).mockReset();
     vi.mocked(api.deleteAsset).mockReset();
+    vi.mocked(api.listAssets).mockReset();
     vi.mocked(api.assetFileUrl).mockClear();
   });
 
@@ -97,6 +99,7 @@ describe("AssetManager", () => {
 
   it("uploaded asset list renders from API response", async () => {
     vi.mocked(api.uploadAsset).mockResolvedValue(asset());
+    vi.mocked(api.listAssets).mockResolvedValue([asset()]);
     render(<Harness />);
 
     await userEvent.upload(screen.getByLabelText("File"), new File(["tiny"], "reference.png", { type: "image/png" }));
@@ -127,6 +130,7 @@ describe("AssetManager", () => {
   it("delete confirmation calls API", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     vi.mocked(api.deleteAsset).mockResolvedValue(undefined);
+    vi.mocked(api.listAssets).mockResolvedValue([]);
     render(<Harness initialAssets={[asset()]} />);
 
     const card = screen.getByText("reference.png").closest("article");

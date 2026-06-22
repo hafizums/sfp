@@ -21,6 +21,7 @@ def create_character(
     project_id: int, payload: schemas.CharacterBase, db: Session = Depends(get_db)
 ) -> models.Character:
     services.project_or_404(db, project_id)
+    services.validate_character_anchor_asset(db, project_id, payload.anchor_asset_id)
     character = models.Character(project_id=project_id, **payload.model_dump())
     db.add(character)
     db.commit()
@@ -35,10 +36,7 @@ def update_character(
     character = db.get(models.Character, character_id)
     if character is None:
         raise services.not_found("Character")
-    services.apply_updates(character, payload)
-    db.commit()
-    db.refresh(character)
-    return character
+    return services.update_character(db, character, payload)
 
 
 @router.delete("/characters/{character_id}", status_code=204)

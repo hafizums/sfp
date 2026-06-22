@@ -144,6 +144,13 @@ class CharacterBase(BaseModel):
     continuity_prompt: str = ""
     negative_prompt: str = ""
     notes: str = ""
+    anchor_asset_id: int | None = None
+    anchor_locked: bool = False
+    face_identity_notes: str = ""
+    outfit_lock_notes: str = ""
+    color_palette_notes: str = ""
+    prop_notes: str = ""
+    anchor_review_notes: str = ""
 
 
 class CharacterUpdate(BaseModel):
@@ -157,6 +164,13 @@ class CharacterUpdate(BaseModel):
     continuity_prompt: str | None = None
     negative_prompt: str | None = None
     notes: str | None = None
+    anchor_asset_id: int | None = None
+    anchor_locked: bool | None = None
+    face_identity_notes: str | None = None
+    outfit_lock_notes: str | None = None
+    color_palette_notes: str | None = None
+    prop_notes: str | None = None
+    anchor_review_notes: str | None = None
 
 
 class CharacterRead(CharacterBase, OrmModel):
@@ -176,6 +190,13 @@ class LocationBase(BaseModel):
     negative_prompt: str = ""
     safety_notes: str = ""
     notes: str = ""
+    anchor_asset_id: int | None = None
+    anchor_locked: bool = False
+    layout_notes: str = ""
+    lighting_lock_notes: str = ""
+    color_palette_notes: str = ""
+    geography_notes: str = ""
+    anchor_review_notes: str = ""
 
 
 class LocationUpdate(BaseModel):
@@ -188,6 +209,13 @@ class LocationUpdate(BaseModel):
     negative_prompt: str | None = None
     safety_notes: str | None = None
     notes: str | None = None
+    anchor_asset_id: int | None = None
+    anchor_locked: bool | None = None
+    layout_notes: str | None = None
+    lighting_lock_notes: str | None = None
+    color_palette_notes: str | None = None
+    geography_notes: str | None = None
+    anchor_review_notes: str | None = None
 
 
 class LocationRead(LocationBase, OrmModel):

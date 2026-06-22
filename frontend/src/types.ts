@@ -120,6 +120,13 @@ export type Character = {
   continuity_prompt: string;
   negative_prompt: string;
   notes: string;
+  anchor_asset_id: number | null;
+  anchor_locked: boolean;
+  face_identity_notes: string;
+  outfit_lock_notes: string;
+  color_palette_notes: string;
+  prop_notes: string;
+  anchor_review_notes: string;
 };
 
 export type CharacterInput = Omit<Character, "id" | "project_id">;
@@ -136,6 +143,13 @@ export type Location = {
   negative_prompt: string;
   safety_notes: string;
   notes: string;
+  anchor_asset_id: number | null;
+  anchor_locked: boolean;
+  layout_notes: string;
+  lighting_lock_notes: string;
+  color_palette_notes: string;
+  geography_notes: string;
+  anchor_review_notes: string;
 };
 
 export type LocationInput = Omit<Location, "id" | "project_id">;
@@ -286,9 +300,27 @@ export type ChecklistItem = {
   position: number;
 };
 
-export type GeneratedCharacterSuggestion = CharacterInput;
+export type GeneratedCharacterSuggestion = Omit<
+  CharacterInput,
+  | "anchor_asset_id"
+  | "anchor_locked"
+  | "face_identity_notes"
+  | "outfit_lock_notes"
+  | "color_palette_notes"
+  | "prop_notes"
+  | "anchor_review_notes"
+>;
 
-export type GeneratedLocationSuggestion = LocationInput;
+export type GeneratedLocationSuggestion = Omit<
+  LocationInput,
+  | "anchor_asset_id"
+  | "anchor_locked"
+  | "layout_notes"
+  | "lighting_lock_notes"
+  | "color_palette_notes"
+  | "geography_notes"
+  | "anchor_review_notes"
+>;
 
 export type GeneratedShotSuggestion = {
   shot_number: number;

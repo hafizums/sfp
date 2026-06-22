@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { api } from "../api/client";
-import { AssetGrid, AssetManager } from "./AssetManager";
+import { AssetGrid, AssetManager, AssetPreviewCard } from "./AssetManager";
 import { AIStoryPanel } from "./AIStoryPanel";
 import { ProductionBiblePanel } from "./ProductionBiblePanel";
 import { ShotList } from "./ShotList";
@@ -70,6 +70,13 @@ const emptyCharacter: CharacterInput = {
   continuity_prompt: "",
   negative_prompt: "",
   notes: "",
+  anchor_asset_id: null,
+  anchor_locked: false,
+  face_identity_notes: "",
+  outfit_lock_notes: "",
+  color_palette_notes: "",
+  prop_notes: "",
+  anchor_review_notes: "",
 };
 
 const emptyLocation: LocationInput = {
@@ -82,6 +89,13 @@ const emptyLocation: LocationInput = {
   negative_prompt: "",
   safety_notes: "",
   notes: "",
+  anchor_asset_id: null,
+  anchor_locked: false,
+  layout_notes: "",
+  lighting_lock_notes: "",
+  color_palette_notes: "",
+  geography_notes: "",
+  anchor_review_notes: "",
 };
 
 const emptyAudio: AudioPlan = {
@@ -376,12 +390,12 @@ function SectionHead({ label, action }: { label: string; action?: string }) {
   );
 }
 
-function TextInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label>{label}<input value={value} onChange={(event) => onChange(event.target.value)} /></label>;
+function TextInput({ label, value, onChange, disabled = false }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean }) {
+  return <label>{label}<input value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
-function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label>{label}<textarea value={value} onChange={(event) => onChange(event.target.value)} /></label>;
+function TextArea({ label, value, onChange, disabled = false }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean }) {
+  return <label>{label}<textarea value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
 function TextSection<T extends object>({
@@ -590,8 +604,30 @@ function buildCharacterPrompt(character: CharacterInput, productionBible: Produc
     character.continuity_prompt ? `Continuity prompt: ${character.continuity_prompt}` : "",
     character.negative_prompt ? `Negative prompt: ${character.negative_prompt}` : "",
     character.notes ? `Notes: ${character.notes}` : "",
+    character.anchor_locked ? "Anchor locked: yes" : "",
+    character.face_identity_notes ? `Face identity notes: ${character.face_identity_notes}` : "",
+    character.outfit_lock_notes ? `Outfit lock notes: ${character.outfit_lock_notes}` : "",
+    character.color_palette_notes ? `Anchor color palette notes: ${character.color_palette_notes}` : "",
+    character.prop_notes ? `Prop notes: ${character.prop_notes}` : "",
+    character.anchor_review_notes ? `Anchor review notes: ${character.anchor_review_notes}` : "",
   ].filter(Boolean).join("\n");
   return appendProductionBibleContext(characterPrompt, productionBible);
+}
+
+function editableCharacterPayload(character: CharacterInput): Partial<CharacterInput> {
+  const {
+    name,
+    role,
+    age,
+    appearance,
+    outfit,
+    personality,
+    voice_style,
+    continuity_prompt,
+    negative_prompt,
+    notes,
+  } = character;
+  return { name, role, age, appearance, outfit, personality, voice_style, continuity_prompt, negative_prompt, notes };
 }
 
 function appendProductionBibleContext(basePrompt: string, productionBible: ProductionBible | null): string {
@@ -634,6 +670,45 @@ function assetHasTag(asset: Asset, tag: string): boolean {
   return asset.notes.includes(`[${tag}]`);
 }
 
+function anchorAssetLabel(asset: Asset): string {
+  return asset.original_filename || asset.filename_or_path || asset.stored_filename || `Asset ${asset.id}`;
+}
+
+function AnchorAssetSelect({
+  label,
+  assets,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  assets: Asset[];
+  value: number | null;
+  disabled: boolean;
+  onChange: (value: number | null) => void;
+}) {
+  return (
+    <label>
+      {label}
+      <select value={value ?? ""} disabled={disabled} onChange={(event) => onChange(event.target.value ? Number(event.target.value) : null)}>
+        <option value="">No anchor selected</option>
+        {assets.map((asset) => <option key={asset.id} value={asset.id}>{anchorAssetLabel(asset)} ({asset.asset_type})</option>)}
+      </select>
+    </label>
+  );
+}
+
+function AnchorPreview({ asset }: { asset: Asset | undefined }) {
+  if (!asset) {
+    return <div className="empty-state">No anchor asset selected.</div>;
+  }
+  return (
+    <div aria-label="Anchor preview">
+      <AssetPreviewCard asset={asset} />
+    </div>
+  );
+}
+
 function CharacterCard({
   projectId,
   character,
@@ -658,9 +733,15 @@ function CharacterCard({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const prompt = buildCharacterPrompt(draft, productionBible);
+  const anchorCandidates = assets.filter((asset) => asset.shot_id === null || asset.asset_type === "character_reference");
+  const selectedAnchor = assets.find((asset) => asset.id === draft.anchor_asset_id);
   const assignedAssets = assets.filter((asset) =>
     asset.asset_type === "character_reference" && assetHasTag(asset, characterAssetTag(character.id)),
   );
+
+  useEffect(() => {
+    setDraft(character);
+  }, [character]);
 
   async function copyPrompt() {
     await navigator.clipboard.writeText(prompt);
@@ -700,6 +781,12 @@ function CharacterCard({
     onAssetsChange(assets.filter((item) => item.id !== asset.id));
   }
 
+  async function saveDraft(payload?: Partial<CharacterInput>) {
+    const nextPayload = payload ?? (draft.anchor_locked ? editableCharacterPayload(draft) : draft);
+    await onUpdate(character.id, nextPayload);
+    setDraft({ ...draft, ...nextPayload });
+  }
+
   return (
     <article className="resource-card editable">
       <div className="form-grid">
@@ -714,6 +801,36 @@ function CharacterCard({
       <TextArea label="Continuity prompt" value={draft.continuity_prompt} onChange={(value) => setDraft({ ...draft, continuity_prompt: value })} />
       <TextArea label="Negative prompt" value={draft.negative_prompt} onChange={(value) => setDraft({ ...draft, negative_prompt: value })} />
       <TextArea label="Notes" value={draft.notes} onChange={(value) => setDraft({ ...draft, notes: value })} />
+      <section className="prompt-group" aria-label={`${character.name} character anchor`}>
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Anchor image</p>
+            <h3>Character visual anchor</h3>
+          </div>
+          {draft.anchor_locked ? <span className="success-pill">Anchor locked</span> : null}
+        </div>
+        <p className="muted-note">Use approved anchor images to keep face, outfit, and props consistent.</p>
+        <AnchorAssetSelect
+          label="Character anchor asset"
+          assets={anchorCandidates}
+          value={draft.anchor_asset_id}
+          disabled={draft.anchor_locked}
+          onChange={(anchor_asset_id) => setDraft({ ...draft, anchor_asset_id })}
+        />
+        <AnchorPreview asset={selectedAnchor} />
+        <TextArea label="Face identity notes" value={draft.face_identity_notes} disabled={draft.anchor_locked} onChange={(value) => setDraft({ ...draft, face_identity_notes: value })} />
+        <TextArea label="Outfit lock notes" value={draft.outfit_lock_notes} disabled={draft.anchor_locked} onChange={(value) => setDraft({ ...draft, outfit_lock_notes: value })} />
+        <TextArea label="Anchor color palette notes" value={draft.color_palette_notes} disabled={draft.anchor_locked} onChange={(value) => setDraft({ ...draft, color_palette_notes: value })} />
+        <TextArea label="Prop notes" value={draft.prop_notes} disabled={draft.anchor_locked} onChange={(value) => setDraft({ ...draft, prop_notes: value })} />
+        <TextArea label="Anchor review notes" value={draft.anchor_review_notes} disabled={draft.anchor_locked} onChange={(value) => setDraft({ ...draft, anchor_review_notes: value })} />
+        <div className="row-actions">
+          {draft.anchor_locked ? (
+            <button type="button" className="ghost" onClick={() => void saveDraft({ anchor_locked: false })}>Unlock Anchor</button>
+          ) : (
+            <button type="button" className="ghost" onClick={() => void saveDraft({ ...draft, anchor_locked: true })} disabled={!draft.anchor_asset_id}>Lock Anchor</button>
+          )}
+        </div>
+      </section>
       <label>
         Character prompt
         <textarea value={prompt} readOnly />
@@ -727,8 +844,8 @@ function CharacterCard({
       <AssetGrid assets={assignedAssets} shots={[]} onDelete={(asset) => void deleteCharacterImage(asset)} />
       <div className="row-actions">
         <button className="ghost" type="button" onClick={() => void copyPrompt()} disabled={!prompt.trim()}><Copy size={16} /> {copiedPrompt ? "Copied prompt" : "Copy prompt"}</button>
-        <button className="ghost" onClick={() => void onUpdate(character.id, draft)}><Check size={16} /> Save</button>
-        <button className="danger" onClick={() => window.confirm(`Delete ${character.name}?`) && void onDelete(character.id)}><Trash2 size={16} /> Delete</button>
+        <button className="ghost" type="button" onClick={() => void saveDraft()}><Check size={16} /> Save</button>
+        <button className="danger" type="button" onClick={() => window.confirm(`Delete ${character.name}?`) && void onDelete(character.id)}><Trash2 size={16} /> Delete</button>
       </div>
     </article>
   );
@@ -902,8 +1019,29 @@ function buildLocationPrompt(location: LocationInput, productionBible: Productio
     location.negative_prompt ? `Negative prompt: ${location.negative_prompt}` : "",
     location.safety_notes ? `Safety notes: ${location.safety_notes}` : "",
     location.notes ? `Notes: ${location.notes}` : "",
+    location.anchor_locked ? "Anchor locked: yes" : "",
+    location.layout_notes ? `Layout notes: ${location.layout_notes}` : "",
+    location.lighting_lock_notes ? `Lighting lock notes: ${location.lighting_lock_notes}` : "",
+    location.color_palette_notes ? `Anchor color palette notes: ${location.color_palette_notes}` : "",
+    location.geography_notes ? `Geography notes: ${location.geography_notes}` : "",
+    location.anchor_review_notes ? `Anchor review notes: ${location.anchor_review_notes}` : "",
   ].filter(Boolean).join("\n");
   return appendProductionBibleContext(locationPrompt, productionBible);
+}
+
+function editableLocationPayload(location: LocationInput): Partial<LocationInput> {
+  const {
+    name,
+    description,
+    mood,
+    lighting,
+    color_palette,
+    continuity_prompt,
+    negative_prompt,
+    safety_notes,
+    notes,
+  } = location;
+  return { name, description, mood, lighting, color_palette, continuity_prompt, negative_prompt, safety_notes, notes };
 }
 
 function LocationCard({
@@ -930,9 +1068,15 @@ function LocationCard({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const prompt = buildLocationPrompt(draft, productionBible);
+  const anchorCandidates = assets.filter((asset) => asset.shot_id === null || asset.asset_type === "location_reference");
+  const selectedAnchor = assets.find((asset) => asset.id === draft.anchor_asset_id);
   const assignedAssets = assets.filter((asset) =>
     asset.asset_type === "location_reference" && assetHasTag(asset, locationAssetTag(location.id)),
   );
+
+  useEffect(() => {
+    setDraft(location);
+  }, [location]);
 
   async function copyPrompt() {
     await navigator.clipboard.writeText(prompt);
@@ -972,6 +1116,12 @@ function LocationCard({
     onAssetsChange(assets.filter((item) => item.id !== asset.id));
   }
 
+  async function saveDraft(payload?: Partial<LocationInput>) {
+    const nextPayload = payload ?? (draft.anchor_locked ? editableLocationPayload(draft) : draft);
+    await onUpdate(location.id, nextPayload);
+    setDraft({ ...draft, ...nextPayload });
+  }
+
   return (
     <article className="resource-card editable">
       <div className="form-grid">
@@ -985,6 +1135,36 @@ function LocationCard({
       <TextArea label="Negative prompt" value={draft.negative_prompt} onChange={(value) => setDraft({ ...draft, negative_prompt: value })} />
       <TextArea label="Safety notes" value={draft.safety_notes} onChange={(value) => setDraft({ ...draft, safety_notes: value })} />
       <TextArea label="Notes" value={draft.notes} onChange={(value) => setDraft({ ...draft, notes: value })} />
+      <section className="prompt-group" aria-label={`${location.name} location anchor`}>
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Anchor image</p>
+            <h3>Location visual anchor</h3>
+          </div>
+          {draft.anchor_locked ? <span className="success-pill">Anchor locked</span> : null}
+        </div>
+        <p className="muted-note">Use approved anchor images to keep layout, lighting, and geography consistent.</p>
+        <AnchorAssetSelect
+          label="Location anchor asset"
+          assets={anchorCandidates}
+          value={draft.anchor_asset_id}
+          disabled={draft.anchor_locked}
+          onChange={(anchor_asset_id) => setDraft({ ...draft, anchor_asset_id })}
+        />
+        <AnchorPreview asset={selectedAnchor} />
+        <TextArea label="Layout notes" value={draft.layout_notes} disabled={draft.anchor_locked} onChange={(value) => setDraft({ ...draft, layout_notes: value })} />
+        <TextArea label="Lighting lock notes" value={draft.lighting_lock_notes} disabled={draft.anchor_locked} onChange={(value) => setDraft({ ...draft, lighting_lock_notes: value })} />
+        <TextArea label="Anchor color palette notes" value={draft.color_palette_notes} disabled={draft.anchor_locked} onChange={(value) => setDraft({ ...draft, color_palette_notes: value })} />
+        <TextArea label="Geography notes" value={draft.geography_notes} disabled={draft.anchor_locked} onChange={(value) => setDraft({ ...draft, geography_notes: value })} />
+        <TextArea label="Anchor review notes" value={draft.anchor_review_notes} disabled={draft.anchor_locked} onChange={(value) => setDraft({ ...draft, anchor_review_notes: value })} />
+        <div className="row-actions">
+          {draft.anchor_locked ? (
+            <button type="button" className="ghost" onClick={() => void saveDraft({ anchor_locked: false })}>Unlock Anchor</button>
+          ) : (
+            <button type="button" className="ghost" onClick={() => void saveDraft({ ...draft, anchor_locked: true })} disabled={!draft.anchor_asset_id}>Lock Anchor</button>
+          )}
+        </div>
+      </section>
       <label>
         Location prompt
         <textarea value={prompt} readOnly />
@@ -998,8 +1178,8 @@ function LocationCard({
       <AssetGrid assets={assignedAssets} shots={[]} onDelete={(asset) => void deleteLocationImage(asset)} />
       <div className="row-actions">
         <button className="ghost" type="button" onClick={() => void copyPrompt()} disabled={!prompt.trim()}><Copy size={16} /> {copiedPrompt ? "Copied prompt" : "Copy prompt"}</button>
-        <button className="ghost" onClick={() => void onUpdate(location.id, draft)}><Check size={16} /> Save</button>
-        <button className="danger" onClick={() => window.confirm(`Delete ${location.name}?`) && void onDelete(location.id)}><Trash2 size={16} /> Delete</button>
+        <button className="ghost" type="button" onClick={() => void saveDraft()}><Check size={16} /> Save</button>
+        <button className="danger" type="button" onClick={() => window.confirm(`Delete ${location.name}?`) && void onDelete(location.id)}><Trash2 size={16} /> Delete</button>
       </div>
     </article>
   );

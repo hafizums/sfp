@@ -84,15 +84,9 @@ Three-act structure: {workspace.three_act_structure}
 Screenplay: {workspace.cinematic_screenplay}
 """.strip()
 
-    character_context = "\n".join(
-        f"- {character.name}: role={character.role}; age={character.age}; appearance={character.appearance}; outfit={character.outfit}; personality={character.personality}; continuity={character.continuity_prompt}; avoid={character.negative_prompt}"
-        for character in characters
-    ) or "- No character bible entries yet; rely only on shot details."
+    character_context = "\n".join(_character_context(character) for character in characters) or "- No character bible entries yet; rely only on shot details."
 
-    location_context = "\n".join(
-        f"- {location.name}: description={location.description}; mood={location.mood}; lighting={location.lighting}; palette={location.color_palette}; continuity={location.continuity_prompt}; safety={location.safety_notes}; avoid={location.negative_prompt}"
-        for location in locations
-    ) or "- No location bible entries yet; rely only on shot details."
+    location_context = "\n".join(_location_context(location) for location in locations) or "- No location bible entries yet; rely only on shot details."
 
     shot_context = "\n".join(
         f"""- shot_id={shot.id}; shot_number={shot.shot_number}; scene_number={shot.scene_number}; duration_seconds={shot.duration_seconds}; purpose={shot.purpose}; camera_framing={shot.camera_framing}; camera_movement={shot.camera_movement}; characters_present={shot.characters_present}; location_name={shot.location_name}; action={shot.action}; emotion={shot.emotion}; notes={shot.notes}"""
@@ -166,8 +160,39 @@ Strict Wan prompt framework:
 - LoRA caution: if notes mention LoRAs, warn that LoRAs can change motion, behavior, identity, or style and should be tested with short clips first.
 - No extra characters: unless a shot explicitly allows background people, do not introduce any extra characters.
 - No identity drift and no sudden scene change must be controlled in the video_prompt and repeated in negative_prompt.
+- Locked anchors: when character or location anchors are locked, treat their filenames and notes as source-of-truth visual continuity context. Do not claim image files were sent; only anchor metadata and notes are available.
 - Do not call WaveSpeed or create images/videos
 """.strip()
+
+
+def _character_context(character: models.Character) -> str:
+    anchor = character.anchor_asset
+    return (
+        f"- {character.name}: role={character.role}; age={character.age}; appearance={character.appearance}; outfit={character.outfit}; "
+        f"personality={character.personality}; continuity={character.continuity_prompt}; avoid={character.negative_prompt}; "
+        f"anchor_locked={'yes' if character.anchor_locked else 'no'}; anchor_asset={_asset_label(anchor)}; "
+        f"face_identity_notes={character.face_identity_notes}; outfit_lock_notes={character.outfit_lock_notes}; "
+        f"color_palette_notes={character.color_palette_notes}; prop_notes={character.prop_notes}; "
+        f"anchor_review_notes={character.anchor_review_notes}"
+    )
+
+
+def _location_context(location: models.Location) -> str:
+    anchor = location.anchor_asset
+    return (
+        f"- {location.name}: description={location.description}; mood={location.mood}; lighting={location.lighting}; "
+        f"palette={location.color_palette}; continuity={location.continuity_prompt}; safety={location.safety_notes}; "
+        f"avoid={location.negative_prompt}; anchor_locked={'yes' if location.anchor_locked else 'no'}; "
+        f"anchor_asset={_asset_label(anchor)}; layout_notes={location.layout_notes}; "
+        f"lighting_lock_notes={location.lighting_lock_notes}; color_palette_notes={location.color_palette_notes}; "
+        f"geography_notes={location.geography_notes}; anchor_review_notes={location.anchor_review_notes}"
+    )
+
+
+def _asset_label(asset: models.Asset | None) -> str:
+    if asset is None:
+        return "none"
+    return asset.original_filename or asset.filename_or_path or asset.stored_filename or f"asset-{asset.id}"
 
 
 def production_bible_context(bible: models.ProductionBible | None) -> str:

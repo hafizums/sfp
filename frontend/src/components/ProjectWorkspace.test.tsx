@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -23,6 +23,9 @@ vi.mock("../api/client", () => ({
     createCharacter: vi.fn(),
     updateCharacter: vi.fn(),
     deleteCharacter: vi.fn(),
+    createLocation: vi.fn(),
+    updateLocation: vi.fn(),
+    deleteLocation: vi.fn(),
     uploadAsset: vi.fn(),
     deleteAsset: vi.fn(),
     assetFileUrl: vi.fn(),
@@ -123,6 +126,13 @@ const character: Character = {
   continuity_prompt: "Mia, yellow raincoat, bright eyes",
   negative_prompt: "no scary expression",
   notes: "Main character",
+  anchor_asset_id: null,
+  anchor_locked: false,
+  face_identity_notes: "",
+  outfit_lock_notes: "",
+  color_palette_notes: "",
+  prop_notes: "",
+  anchor_review_notes: "",
 };
 
 const secondCharacter: Character = {
@@ -171,6 +181,13 @@ const location: Location = {
   negative_prompt: "no dark horror mood",
   safety_notes: "gentle paths and no danger",
   notes: "Main adventure location",
+  anchor_asset_id: null,
+  anchor_locked: false,
+  layout_notes: "",
+  lighting_lock_notes: "",
+  color_palette_notes: "",
+  geography_notes: "",
+  anchor_review_notes: "",
 };
 
 const secondLocation: Location = {
@@ -217,6 +234,9 @@ describe("ProjectWorkspace", () => {
     vi.mocked(api.createCharacter).mockResolvedValue(character);
     vi.mocked(api.updateCharacter).mockResolvedValue(character);
     vi.mocked(api.deleteCharacter).mockResolvedValue(undefined);
+    vi.mocked(api.createLocation).mockResolvedValue(location);
+    vi.mocked(api.updateLocation).mockResolvedValue(location);
+    vi.mocked(api.deleteLocation).mockResolvedValue(undefined);
     vi.mocked(api.uploadAsset).mockResolvedValue(characterAsset);
     vi.mocked(api.deleteAsset).mockResolvedValue(undefined);
     vi.mocked(api.assetFileUrl).mockReturnValue("http://127.0.0.1:8010/api/assets/1/file");
@@ -298,6 +318,37 @@ describe("ProjectWorkspace", () => {
       file: portrait,
     });
     expect((await screen.findAllByText("mia-portrait.png")).length).toBeGreaterThan(0);
+  }, 10000);
+
+  it("renders character anchors and locks/unlocks anchor fields", async () => {
+    vi.mocked(api.listCharacters).mockResolvedValue([{ ...character, anchor_asset_id: characterAsset.id }]);
+    vi.mocked(api.listAssets).mockResolvedValue([characterAsset]);
+    vi.mocked(api.updateCharacter)
+      .mockResolvedValueOnce({ ...character, anchor_asset_id: characterAsset.id, anchor_locked: true })
+      .mockResolvedValueOnce({ ...character, anchor_asset_id: characterAsset.id, anchor_locked: false });
+    const user = userEvent.setup();
+    render(<ProjectWorkspace project={project} onRefreshProject={vi.fn().mockResolvedValue(undefined)} />);
+
+    await user.click(screen.getByRole("button", { name: "Characters" }));
+    const selector = await screen.findByLabelText("Character anchor asset");
+    expect(selector).toHaveValue(String(characterAsset.id));
+    expect(screen.getByLabelText("Anchor preview")).toHaveTextContent("mia.png");
+    expect(screen.getByText(/Use approved anchor images to keep face, outfit, and props consistent/i)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Face identity notes"), "round face");
+    await user.click(screen.getByRole("button", { name: "Lock Anchor" }));
+
+    expect(api.updateCharacter).toHaveBeenCalledWith(1, expect.objectContaining({
+      anchor_asset_id: characterAsset.id,
+      anchor_locked: true,
+      face_identity_notes: "round face",
+    }));
+    expect(await screen.findByText("Anchor locked")).toBeInTheDocument();
+    expect(screen.getByLabelText("Face identity notes")).toBeDisabled();
+    expect(screen.getByLabelText("Character anchor asset")).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Unlock Anchor" }));
+    expect(api.updateCharacter).toHaveBeenLastCalledWith(1, { anchor_locked: false });
   });
 
   it("copies draft, per-location, and combined prompts and uploads location assets", async () => {
@@ -359,5 +410,37 @@ describe("ProjectWorkspace", () => {
       file: wide,
     });
     expect((await screen.findAllByText("garden-wide.png")).length).toBeGreaterThan(0);
+  }, 10000);
+
+  it("renders location anchors and locks/unlocks anchor fields", async () => {
+    vi.mocked(api.listLocations).mockResolvedValue([{ ...location, anchor_asset_id: locationAsset.id }]);
+    vi.mocked(api.listAssets).mockResolvedValue([locationAsset]);
+    vi.mocked(api.updateLocation)
+      .mockResolvedValueOnce({ ...location, anchor_asset_id: locationAsset.id, anchor_locked: true })
+      .mockResolvedValueOnce({ ...location, anchor_asset_id: locationAsset.id, anchor_locked: false });
+    const user = userEvent.setup();
+    render(<ProjectWorkspace project={project} onRefreshProject={vi.fn().mockResolvedValue(undefined)} />);
+
+    await user.click(screen.getByRole("button", { name: "Locations" }));
+    const selector = await screen.findByLabelText("Location anchor asset");
+    expect(selector).toHaveValue(String(locationAsset.id));
+    expect(screen.getByLabelText("Anchor preview")).toHaveTextContent("garden.png");
+    expect(screen.getByText(/Use approved anchor images to keep layout, lighting, and geography consistent/i)).toBeInTheDocument();
+
+    const locationAnchor = screen.getByLabelText("Floating Garden location anchor");
+    await user.type(within(locationAnchor).getByLabelText("Layout notes"), "bridge right");
+    await user.click(within(locationAnchor).getByRole("button", { name: "Lock Anchor" }));
+
+    expect(api.updateLocation).toHaveBeenCalledWith(1, expect.objectContaining({
+      anchor_asset_id: locationAsset.id,
+      anchor_locked: true,
+      layout_notes: "bridge right",
+    }));
+    expect(await screen.findByText("Anchor locked")).toBeInTheDocument();
+    expect(screen.getByLabelText("Layout notes")).toBeDisabled();
+    expect(screen.getByLabelText("Location anchor asset")).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Unlock Anchor" }));
+    expect(api.updateLocation).toHaveBeenLastCalledWith(1, { anchor_locked: false });
   });
 });

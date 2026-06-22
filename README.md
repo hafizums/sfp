@@ -86,6 +86,12 @@ The same prompt package also separates still-image prompts from Wan motion promp
 
 GPT image prompts should use concrete visible details, exact character count, named characters, character appearance/outfit, locked location, stable composition, age 4+ mood, and no text/logos/watermarks/UI/subtitles. See `docs/GPT_IMAGE_PROMPTING_GUIDE.md` for still-image prompt checklists and examples.
 
+## Character and Location Anchors
+
+Characters and locations can use approved reference assets as locked visual anchors. A character anchor stores the selected asset, lock state, face identity notes, outfit lock notes, palette notes, prop notes, and review notes. A location anchor stores the selected asset, lock state, layout notes, lighting lock notes, palette notes, geography notes, and review notes.
+
+Locked anchors prevent accidental anchor asset or anchor note changes until unlocked. Normal character and location bible text can still be edited. Prompt generation uses locked anchor filenames and continuity notes as source-of-truth context, but it does not send image binaries or local file paths to OpenAI.
+
 Each selected shot also has a Production Quality Gate section with 0-5 review scores, notes, and a final approval readiness checkbox. This review layer does not automatically change the shot status yet.
 
 ## Shot Takes
@@ -191,19 +197,21 @@ npm run build
 6. Open `Production Bible`, edit visual direction and negative prompt rules, save, then lock the bible.
 7. Confirm Production Bible fields are read-only while locked.
 8. Add a character and edit it.
-9. Add a location and edit it.
-10. Add 3 shots.
-11. Reorder shots with the arrow buttons.
-12. Confirm planned runtime and remaining seconds update.
-13. In selected shot detail, fill Production Quality Gate scores and notes, then save.
-14. Upload or track a generated video/subtitle asset and create `Take A` from the selected shot.
-15. Approve `Take A`, create `Take B`, then approve `Take B` and confirm `Take A` is no longer final.
-16. Copy an image prompt and the Wan 2.2 package.
-17. Change a shot status to `Approved` and save.
-18. Add an asset metadata entry linked to a shot.
-19. Fill and save the audio plan.
-20. Check a final checklist item.
-21. Delete a project only after confirming the browser prompt.
+9. Assign a character reference asset as the character anchor, add face/outfit notes, and lock the anchor.
+10. Add a location and edit it.
+11. Assign a location reference asset as the location anchor, add layout/lighting notes, and lock the anchor.
+12. Add 3 shots.
+13. Reorder shots with the arrow buttons.
+14. Confirm planned runtime and remaining seconds update.
+15. In selected shot detail, fill Production Quality Gate scores and notes, then save.
+16. Upload or track a generated video/subtitle asset and create `Take A` from the selected shot.
+17. Approve `Take A`, create `Take B`, then approve `Take B` and confirm `Take A` is no longer final.
+18. Copy an image prompt and the Wan 2.2 package.
+19. Change a shot status to `Approved` and save.
+20. Add an asset metadata entry linked to a shot.
+21. Fill and save the audio plan.
+22. Check a final checklist item.
+23. Delete a project only after confirming the browser prompt.
 
 ## Manual Production Bible and Quality Gate Test
 
@@ -263,7 +271,8 @@ npm run build
 12. Confirm the shot prompt fields are populated.
 13. Use the individual prompt copy buttons and `Copy Wan 2.2 package`.
 14. Confirm no WaveSpeed API call happens; this prepares prompts only.
-15. Create start/end frames, test short external clips first, create takes, and approve the best take.
+15. Confirm locked character/location anchor filenames and notes are reflected in prompt intent when available.
+16. Create start/end frames, test short external clips first, create takes, and approve the best take.
 
 ## Manual Asset Upload Test
 

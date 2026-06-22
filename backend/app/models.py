@@ -112,8 +112,16 @@ class Character(TimestampMixin, Base):
     continuity_prompt: Mapped[str] = mapped_column(Text, default="")
     negative_prompt: Mapped[str] = mapped_column(Text, default="")
     notes: Mapped[str] = mapped_column(Text, default="")
+    anchor_asset_id: Mapped[int | None] = mapped_column(ForeignKey("assets.id"), nullable=True)
+    anchor_locked: Mapped[bool] = mapped_column(Boolean, default=False)
+    face_identity_notes: Mapped[str] = mapped_column(Text, default="")
+    outfit_lock_notes: Mapped[str] = mapped_column(Text, default="")
+    color_palette_notes: Mapped[str] = mapped_column(Text, default="")
+    prop_notes: Mapped[str] = mapped_column(Text, default="")
+    anchor_review_notes: Mapped[str] = mapped_column(Text, default="")
 
     project: Mapped[Project] = relationship(back_populates="characters")
+    anchor_asset: Mapped["Asset | None"] = relationship(foreign_keys=[anchor_asset_id])
 
 
 class Location(TimestampMixin, Base):
@@ -130,8 +138,16 @@ class Location(TimestampMixin, Base):
     negative_prompt: Mapped[str] = mapped_column(Text, default="")
     safety_notes: Mapped[str] = mapped_column(Text, default="")
     notes: Mapped[str] = mapped_column(Text, default="")
+    anchor_asset_id: Mapped[int | None] = mapped_column(ForeignKey("assets.id"), nullable=True)
+    anchor_locked: Mapped[bool] = mapped_column(Boolean, default=False)
+    layout_notes: Mapped[str] = mapped_column(Text, default="")
+    lighting_lock_notes: Mapped[str] = mapped_column(Text, default="")
+    color_palette_notes: Mapped[str] = mapped_column(Text, default="")
+    geography_notes: Mapped[str] = mapped_column(Text, default="")
+    anchor_review_notes: Mapped[str] = mapped_column(Text, default="")
 
     project: Mapped[Project] = relationship(back_populates="locations")
+    anchor_asset: Mapped["Asset | None"] = relationship(foreign_keys=[anchor_asset_id])
 
 
 class Shot(TimestampMixin, Base):

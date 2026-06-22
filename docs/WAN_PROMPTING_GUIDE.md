@@ -4,6 +4,8 @@ Wan 2.2 prompts should be structured because vague cinematic wording can lead to
 
 Use the GPT image prompts first: `image_prompt` for the storyboard/reference still, `start_frame_prompt` for the exact first frame, and `end_frame_prompt` for the exact final frame. Then use `video_prompt` to control the Wan motion between those images. See `GPT_IMAGE_PROMPTING_GUIDE.md` for the still-image framework.
 
+If character or location anchors are locked, prompt generation uses their filenames and continuity notes as visual source-of-truth context. Anchor images are not sent to OpenAI; they remain local reference assets.
+
 ## Prompt Checklist
 
 - Cast/count: state exactly how many characters are visible and use character names from the shot or character bible. If only named characters should appear, say that only those named characters are visible and no extra people enter the frame.

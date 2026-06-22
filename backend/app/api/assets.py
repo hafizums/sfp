@@ -86,6 +86,7 @@ def delete_asset(asset_id: int, db: Session = Depends(get_db)) -> Response:
     asset = db.get(models.Asset, asset_id)
     if asset is None:
         raise services.not_found("Asset")
+    services.ensure_asset_not_used_as_anchor(db, asset_id)
     relative_path = asset.relative_path
     db.delete(asset)
     db.commit()

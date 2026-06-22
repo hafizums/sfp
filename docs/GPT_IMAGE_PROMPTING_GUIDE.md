@@ -25,9 +25,13 @@ GPT image prompts serve a different job than Wan video prompts. Still-image prom
 
 Write character anchors as visible facts: face shape, age, hairstyle, outfit, and signature props. Prefer "Mia, one 7-year-old child with short curls, round glasses, yellow raincoat, and red boots" over a vague label like "the hero girl."
 
+When a character anchor is locked in the app, prompt generation treats the anchor filename plus face identity, outfit, palette, prop, and review notes as source-of-truth continuity context. The image file itself is not sent to OpenAI.
+
 ## Location Anchor Tips
 
 Lock the location with visible geography, lighting, and palette. Prefer "the same cozy backyard treehouse interior, tiny glowing door on the north wall, warm afternoon light from frame left" over "magical treehouse."
+
+When a location anchor is locked in the app, prompt generation uses the anchor filename plus layout, lighting, palette, geography, and review notes to keep the location stable. The image binary and local file path stay local.
 
 ## Storyboard/Reference Still Tips
 
@@ -48,6 +52,7 @@ The end frame should preserve the same scene and same named characters. Change o
 - Camera language follows the Production Bible.
 - Color palette and style match the locked bible.
 - Start and end frames differ by one clear, deliberate visual change.
+- Locked character and location anchors are reviewed before prompt generation.
 
 ## Example
 

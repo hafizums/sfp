@@ -78,6 +78,18 @@ def create_location(client: TestClient, project_id: int, **overrides: Any) -> di
     return response.json()
 
 
+def create_asset(client: TestClient, project_id: int, **overrides: Any) -> dict:
+    payload = {
+        "asset_type": "character_reference",
+        "filename_or_path": "reference.png",
+        "notes": "approved anchor",
+        **overrides,
+    }
+    response = client.post(f"/api/projects/{project_id}/assets", json=payload)
+    assert response.status_code == 201
+    return response.json()
+
+
 def package_payload(shot: dict, suffix: str = "") -> dict:
     return {
         "shot_id": shot["id"],
@@ -306,6 +318,61 @@ def test_preview_works_with_character_and_location_context(client: TestClient) -
     assert "Jo keeps a blue explorer vest" in provider.prompt
     assert "Floating Garden" in provider.prompt
     assert "soft morning glow" in provider.prompt
+
+
+def test_preview_context_includes_locked_character_and_location_anchor_notes(client: TestClient) -> None:
+    project = create_project(client)
+    character_anchor = create_asset(
+        client,
+        project["id"],
+        asset_type="character_reference",
+        filename_or_path="mia-approved-anchor.png",
+    )
+    location_anchor = create_asset(
+        client,
+        project["id"],
+        asset_type="location_reference",
+        filename_or_path="garden-approved-anchor.png",
+    )
+    create_character(
+        client,
+        project["id"],
+        name="Mia",
+        anchor_asset_id=character_anchor["id"],
+        anchor_locked=True,
+        face_identity_notes="round face, short curls, bright eyes",
+        outfit_lock_notes="yellow raincoat must stay unchanged",
+        color_palette_notes="warm yellow and leaf green",
+        prop_notes="small brass compass",
+    )
+    create_location(
+        client,
+        project["id"],
+        name="Floating Garden",
+        anchor_asset_id=location_anchor["id"],
+        anchor_locked=True,
+        layout_notes="arched bridge stays frame right",
+        lighting_lock_notes="golden light from frame left",
+        geography_notes="pond remains behind the bridge",
+    )
+    shot = create_shot(client, project["id"], characters_present="Mia", location_name="Floating Garden")
+    provider = FakeShotPromptProvider([package_payload(shot)])
+    client.app.dependency_overrides[get_shot_prompt_provider] = lambda: provider
+
+    response = client.post(f"/api/projects/{project['id']}/ai/shot-prompts/preview", json={})
+
+    assert response.status_code == 200
+    prompt = provider.prompt
+    assert "anchor_locked=yes" in prompt
+    assert "anchor_asset=mia-approved-anchor.png" in prompt
+    assert "round face, short curls, bright eyes" in prompt
+    assert "yellow raincoat must stay unchanged" in prompt
+    assert "small brass compass" in prompt
+    assert "anchor_asset=garden-approved-anchor.png" in prompt
+    assert "arched bridge stays frame right" in prompt
+    assert "golden light from frame left" in prompt
+    assert "pond remains behind the bridge" in prompt
+    assert "only anchor metadata and notes are available" in prompt
 
 
 def test_invalid_provider_response_fails_safely(client: TestClient) -> None:

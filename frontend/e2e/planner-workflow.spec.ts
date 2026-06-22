@@ -211,6 +211,7 @@ test("Scenario G - manual story start without interview", async ({ page }) => {
   await page.goto("/");
 
   const projectTitle = `E2E Manual Start ${Date.now()}`;
+  const fixturePath = path.resolve(__dirname, "fixtures/sample.vtt");
   await page.getByLabel("Title").fill(projectTitle);
   await page.getByRole("button", { name: /create project/i }).click();
   await expect(page.getByText(projectTitle).first()).toBeVisible();
@@ -223,12 +224,46 @@ test("Scenario G - manual story start without interview", async ({ page }) => {
   await page.getByLabel("Synopsis").fill("They work together to guide sleepy star flowers home.");
   await page.getByRole("button", { name: "Save" }).click();
 
+  await page.getByRole("button", { name: "Characters" }).click();
+  const characterForm = page.locator("form.resource-form").first();
+  await characterForm.getByLabel("Name").fill("Mia");
+  await characterForm.getByLabel("Role").fill("curious kite finder");
+  await characterForm.getByLabel("Age").fill("7");
+  await characterForm.getByRole("button", { name: /add character/i }).click();
+  const characterCard = page.locator(".resource-card").filter({ hasText: "Mia" }).first();
+  await characterCard.getByLabel("Character image").setInputFiles(fixturePath);
+  await characterCard.getByLabel("Image notes").fill("Mia approved face and outfit anchor");
+  await characterCard.getByRole("button", { name: /upload image/i }).click();
+  await expect(characterCard).toContainText("Mia approved face and outfit anchor");
+  await characterCard.getByLabel("Character anchor asset").selectOption({ label: "sample.vtt (character_reference)" });
+  await characterCard.getByLabel("Face identity notes").fill("Mia keeps the same round face and short curls.");
+  await characterCard.getByLabel("Outfit lock notes").fill("Yellow raincoat remains unchanged.");
+  await characterCard.getByRole("button", { name: "Lock Anchor" }).click();
+  await expect(characterCard).toContainText("Anchor locked");
+
+  await page.getByRole("button", { name: "Locations" }).click();
+  const locationForm = page.locator("form.resource-form").first();
+  await locationForm.getByLabel("Name").fill("Sky Garden gate");
+  await locationForm.getByLabel("Mood").fill("gentle wonder");
+  await locationForm.getByLabel("Lighting").fill("warm sunrise");
+  await locationForm.getByRole("button", { name: /add location/i }).click();
+  const locationCard = page.locator(".resource-card").filter({ hasText: "Sky Garden gate" }).first();
+  await locationCard.getByLabel("Location image").setInputFiles(fixturePath);
+  await locationCard.getByLabel("Image notes").fill("Sky Garden approved layout anchor");
+  await locationCard.getByRole("button", { name: /upload image/i }).click();
+  await expect(locationCard).toContainText("Sky Garden approved layout anchor");
+  await locationCard.getByLabel("Location anchor asset").selectOption({ label: "sample.vtt (location_reference)" });
+  await locationCard.getByLabel("Layout notes").fill("Arched gate stays on frame right.");
+  await locationCard.getByLabel("Lighting lock notes").fill("Warm sunrise stays from frame left.");
+  await locationCard.getByRole("button", { name: "Lock Anchor" }).click();
+  await expect(locationCard).toContainText("Anchor locked");
+
   await page.getByRole("button", { name: "Shots" }).click();
   await createShotFromUi(page, "Manual story opening", 5);
   const shotDetail = page.locator("form.shot-detail");
-  await shotDetail.getByLabel("Characters present").fill("Mia and Jo");
+  await shotDetail.getByLabel("Characters present").fill("Mia");
   await shotDetail.getByLabel("Location", { exact: true }).fill("Sky Garden gate");
-  await shotDetail.getByLabel("Action").fill("Mia and Jo stand still while the glowing kite points toward the garden");
+  await shotDetail.getByLabel("Action").fill("Mia stands still while the glowing kite points toward the garden");
   await shotDetail.getByLabel("Camera framing").fill("medium wide shot");
   await shotDetail.getByLabel("Camera movement").fill("static camera");
   await shotDetail.getByLabel("Image prompt").fill("bright 16:9 storybook frame of cousins with a glowing kite");
@@ -242,6 +277,7 @@ test("Scenario G - manual story start without interview", async ({ page }) => {
   await expect(wanPanel).toContainText("guided interview is not required");
   await expect(wanPanel).toContainText("Image prompts are optimized for GPT image generation: storyboard still, exact start frame, and exact end frame");
   await expect(wanPanel).toContainText("strict framework: cast count, locked camera/framing, action timeline, and motion boundaries");
+  await expect(wanPanel).toContainText("locked character and location anchors");
   await page.getByRole("button", { name: /copy wan 2.2 package/i }).click();
   await expect(page.getByText("Wan package copied")).toBeVisible();
 });

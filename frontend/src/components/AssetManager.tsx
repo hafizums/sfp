@@ -57,13 +57,13 @@ export function AssetManager({ projectId, shots, assets, onAssetsChange }: Props
     setUploading(true);
     setError(null);
     try {
-      const asset = await api.uploadAsset(projectId, {
+      await api.uploadAsset(projectId, {
         asset_type: uploadDraft.asset_type,
         shot_id: uploadDraft.shot_id,
         notes: uploadDraft.notes,
         file: uploadDraft.file,
       });
-      onAssetsChange([asset, ...assets]);
+      onAssetsChange(await api.listAssets(projectId));
       setUploadDraft(emptyUpload);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to upload asset.");
@@ -73,8 +73,8 @@ export function AssetManager({ projectId, shots, assets, onAssetsChange }: Props
   }
 
   async function createMetadata() {
-    const asset = await api.createAsset(projectId, metadataDraft);
-    onAssetsChange([asset, ...assets]);
+    await api.createAsset(projectId, metadataDraft);
+    onAssetsChange(await api.listAssets(projectId));
     setMetadataDraft(emptyMetadata);
   }
 
@@ -83,7 +83,7 @@ export function AssetManager({ projectId, shots, assets, onAssetsChange }: Props
       return;
     }
     await api.deleteAsset(asset.id);
-    onAssetsChange(assets.filter((item) => item.id !== asset.id));
+    onAssetsChange(await api.listAssets(projectId));
   }
 
   return (

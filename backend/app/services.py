@@ -104,6 +104,115 @@ def apply_updates(instance: object, payload: object) -> object:
     return instance
 
 
+CHARACTER_ANCHOR_FIELDS = {
+    "anchor_asset_id",
+    "face_identity_notes",
+    "outfit_lock_notes",
+    "color_palette_notes",
+    "prop_notes",
+    "anchor_review_notes",
+}
+
+LOCATION_ANCHOR_FIELDS = {
+    "anchor_asset_id",
+    "layout_notes",
+    "lighting_lock_notes",
+    "color_palette_notes",
+    "geography_notes",
+    "anchor_review_notes",
+}
+
+
+def validate_character_anchor_asset(db: Session, project_id: int, asset_id: int | None) -> None:
+    _validate_anchor_asset(db, project_id, asset_id, "character_reference", "character anchor_asset_id")
+
+
+def validate_location_anchor_asset(db: Session, project_id: int, asset_id: int | None) -> None:
+    _validate_anchor_asset(db, project_id, asset_id, "location_reference", "location anchor_asset_id")
+
+
+def update_character(db: Session, character: models.Character, payload: schemas.CharacterUpdate) -> models.Character:
+    _ensure_unlocked_anchor_edit(
+        locked=character.anchor_locked,
+        fields_set=payload.model_fields_set,
+        protected_fields=CHARACTER_ANCHOR_FIELDS,
+        lock_value=payload.anchor_locked,
+        label="Character anchor",
+    )
+    if "anchor_asset_id" in payload.model_fields_set:
+        validate_character_anchor_asset(db, character.project_id, payload.anchor_asset_id)
+    apply_updates(character, payload)
+    db.commit()
+    db.refresh(character)
+    return character
+
+
+def update_location(db: Session, location: models.Location, payload: schemas.LocationUpdate) -> models.Location:
+    _ensure_unlocked_anchor_edit(
+        locked=location.anchor_locked,
+        fields_set=payload.model_fields_set,
+        protected_fields=LOCATION_ANCHOR_FIELDS,
+        lock_value=payload.anchor_locked,
+        label="Location anchor",
+    )
+    if "anchor_asset_id" in payload.model_fields_set:
+        validate_location_anchor_asset(db, location.project_id, payload.anchor_asset_id)
+    apply_updates(location, payload)
+    db.commit()
+    db.refresh(location)
+    return location
+
+
+def ensure_asset_not_used_as_anchor(db: Session, asset_id: int) -> None:
+    character = db.scalar(select(models.Character).where(models.Character.anchor_asset_id == asset_id))
+    if character is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Asset is used as the anchor for character '{character.name}'. Unlock or clear the anchor before deleting it.",
+        )
+    location = db.scalar(select(models.Location).where(models.Location.anchor_asset_id == asset_id))
+    if location is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Asset is used as the anchor for location '{location.name}'. Unlock or clear the anchor before deleting it.",
+        )
+
+
+def _validate_anchor_asset(
+    db: Session,
+    project_id: int,
+    asset_id: int | None,
+    reference_type: str,
+    label: str,
+) -> None:
+    if asset_id is None:
+        return
+    asset = db.get(models.Asset, asset_id)
+    if asset is None:
+        raise not_found("Asset")
+    if asset.project_id != project_id:
+        raise HTTPException(status_code=400, detail=f"{label} must belong to this project")
+    if asset.shot_id is not None and asset.asset_type != reference_type:
+        raise HTTPException(status_code=400, detail=f"{label} must be project-level or a {reference_type} asset")
+
+
+def _ensure_unlocked_anchor_edit(
+    *,
+    locked: bool,
+    fields_set: set[str],
+    protected_fields: set[str],
+    lock_value: bool | None,
+    label: str,
+) -> None:
+    if not locked:
+        return
+    is_unlock_only = fields_set == {"anchor_locked"} and lock_value is False
+    if is_unlock_only:
+        return
+    if protected_fields.intersection(fields_set):
+        raise HTTPException(status_code=409, detail=f"{label} is locked. Unlock it before changing anchor fields.")
+
+
 def get_or_create_story_interview(db: Session, project_id: int) -> models.StoryInterview:
     project = project_or_404(db, project_id)
     if project.story_interview is None:

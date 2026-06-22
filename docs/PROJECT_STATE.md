@@ -1,10 +1,10 @@
 # Short Film Planner Studio Project State
 
-Last reviewed against milestone `GPT_IMAGE_PROMPT_FRAMEWORK_01`.
+Last reviewed against milestone `CHARACTER_LOCATION_ANCHOR_LOCK_01`.
 
 ## Purpose
 
-Short Film Planner Studio is a private local web app for planning a short kids adventure film. It supports project setup, optional guided interview, manual story/screenplay planning, a lockable Production Bible, character and location bibles, storyboard shots, copy-ready Wan 2.2 prompts, local asset tracking/upload, manual shot takes, shot quality gates, audio notes, and a final checklist.
+Short Film Planner Studio is a private local web app for planning a short kids adventure film. It supports project setup, optional guided interview, manual story/screenplay planning, a lockable Production Bible, character and location bibles with locked visual anchors, storyboard shots, copy-ready Wan 2.2 prompts, local asset tracking/upload, manual shot takes, shot quality gates, audio notes, and a final checklist.
 
 The app is not a video generator. WaveSpeed is not integrated.
 
@@ -51,8 +51,8 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 - `Project`: title, genre, target runtime, audience, tone, aspect ratio, visual style, safety rules.
 - `StoryInterview`: optional guided interview answers used as one possible story-generation context source.
 - `StoryWorkspace`: logline, synopsis, structure, screenplay, simple dialogue, voiceover, subtitles.
-- `Character`: character bible and continuity fields.
-- `Location`: location bible, continuity, safety, and negative prompts.
+- `Character`: character bible, continuity fields, selected anchor asset, lock state, and face/outfit/palette/prop anchor notes.
+- `Location`: location bible, continuity, safety, negative prompts, selected anchor asset, lock state, and layout/lighting/palette/geography anchor notes.
 - `Shot`: storyboard/timeline shot details plus image/start/end/video/negative prompt fields and status.
 - `Asset`: project-level or shot-level asset metadata plus optional uploaded file metadata.
 - `ShotTake`: shot attempt/version metadata, prompt snapshots, linked assets, scores, rejection reason, and final approval state.
@@ -96,7 +96,8 @@ The frontend talks only to the FastAPI backend through `frontend/src/api/client.
 ## AI Features
 
 - Story package generation uses OpenAI from the backend only. The guided interview is optional; preview uses the best available context from the Production Bible, any filled interview answers, manual Story workspace fields, existing characters/locations/shots, and meaningful project setup defaults. It creates a structured preview containing story workspace content, character suggestions, location suggestions, storyboard shots, audio plan, and safety review. Applying is user-controlled and overwrite-safe.
-- Wan 2.2 shot prompt generation uses OpenAI from the backend only. It does not require interview answers. It includes Production Bible context for visual style, camera language, continuity, negative prompt rules, safety, and final delivery specs, plus existing shot context. It creates structured prompt packages for existing shots using a strict GPT image framework for `image_prompt`, `start_frame_prompt`, and `end_frame_prompt`, plus a strict Wan framework for `video_prompt`: cast/count, locked setting/time, camera/framing, beginning-middle-end action timeline, motion boundaries, positive constraints, and start/end-frame consistency. It does not call OpenAI image generation, WaveSpeed, or create files or videos.
+- Wan 2.2 shot prompt generation uses OpenAI from the backend only. It does not require interview answers. It includes Production Bible context for visual style, camera language, continuity, negative prompt rules, safety, and final delivery specs, plus existing shot context and locked character/location anchor metadata. It creates structured prompt packages for existing shots using a strict GPT image framework for `image_prompt`, `start_frame_prompt`, and `end_frame_prompt`, plus a strict Wan framework for `video_prompt`: cast/count, locked setting/time, camera/framing, beginning-middle-end action timeline, motion boundaries, positive constraints, and start/end-frame consistency. It does not call OpenAI image generation, WaveSpeed, or create files or videos.
+- Anchor images stay local. Prompt generation includes only anchor filenames, lock state, and continuity notes, not binary files or local file paths.
 - Missing API keys, provider errors, timeouts, invalid responses, missing-story-context states, no-shot states, and cross-project shot IDs have test coverage.
 
 ## Production Bible and Quality Gates
@@ -147,6 +148,7 @@ Backend tests cover:
 - strict GPT image prompt-generation instructions for storyboard/reference stills, exact start frames, exact end frames, visible character count, named characters, character appearance/outfit, locked location, composition, lighting/color palette, Production Bible style, still-prompt motion limits, no text/logos/watermarks, no extra characters, and no identity drift
 - Production Bible default creation, update, lock/unlock, and locked-update failure
 - AI prompt context including Production Bible content
+- character/location anchor asset validation, lock protection, prompt context, and anchor delete conflicts
 - shot quality review default creation, update, and invalid-shot errors
 - shot take creation, auto-labeling, prompt snapshots, linked-asset validation, approval handoff, rejection, delete safety, and invalid IDs
 
@@ -154,7 +156,8 @@ Frontend unit tests cover:
 
 - dashboard create/edit/delete confirmation
 - story AI panel render/loading/preview/apply/error/warnings
-- Wan prompt panel render/loading/preview/apply/error/no-shot state, strict Wan helper text, and GPT image prompt helper text
+- Wan prompt panel render/loading/preview/apply/error/no-shot state, strict Wan helper text, GPT image prompt helper text, and locked-anchor helper text
+- character/location anchor selector, preview, lock/unlock behavior, and protected locked anchor fields
 - shot runtime, reorder, status update, copy feedback, attached asset display
 - Production Bible render, lock/unlock behavior, locked fields, save, and negative-rule copy
 - shot quality gate render and update call
@@ -167,7 +170,7 @@ E2E tests cover:
 - prompt copy flow
 - asset upload/preview/delete flow
 - AI panel safe-state flow without calling OpenAI
-- manual story start without filling the interview, including GPT image helper text, strict Wan helper text, and prompt package copy flow
+- manual story start without filling the interview, locked character/location anchors, GPT image helper text, strict Wan helper text, and prompt package copy flow
 - production bible lock and shot quality gate persistence flow
 - shot take creation, prompt snapshot, approval handoff, and manual asset linking flow
 
