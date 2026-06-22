@@ -163,6 +163,11 @@ class Asset(TimestampMixin, Base):
     shot_id: Mapped[int | None] = mapped_column(ForeignKey("shots.id"), nullable=True, index=True)
     asset_type: Mapped[str] = mapped_column(String(80))
     filename_or_path: Mapped[str] = mapped_column(String(500))
+    original_filename: Mapped[str] = mapped_column(String(500), default="")
+    stored_filename: Mapped[str] = mapped_column(String(500), default="")
+    relative_path: Mapped[str] = mapped_column(String(700), default="")
+    mime_type: Mapped[str] = mapped_column(String(160), default="")
+    size_bytes: Mapped[int] = mapped_column(Integer, default=0)
     notes: Mapped[str] = mapped_column(Text, default="")
 
     project: Mapped[Project] = relationship(back_populates="assets")

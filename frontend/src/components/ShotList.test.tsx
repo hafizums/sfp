@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { ShotList } from "./ShotList";
-import type { Shot } from "../types";
+import type { Asset, Shot } from "../types";
 
 const shot: Shot = {
   id: 1,
@@ -27,6 +27,23 @@ const shot: Shot = {
   notes: "",
 };
 
+const attachedAsset: Asset = {
+  id: 9,
+  project_id: 1,
+  shot_id: 1,
+  asset_type: "start_frame",
+  filename_or_path: "start.png",
+  original_filename: "start.png",
+  stored_filename: "stored.png",
+  relative_path: "project_1/stored.png",
+  mime_type: "image/png",
+  size_bytes: 12,
+  preview_url: "/api/assets/9/file",
+  download_url: "/api/assets/9/file",
+  notes: "approved start frame",
+  created_at: "2026-01-01T00:00:00Z",
+};
+
 describe("ShotList", () => {
   it("copies a Wan 2.2 prompt package for the selected shot", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
@@ -35,6 +52,7 @@ describe("ShotList", () => {
     render(
       <ShotList
         shots={[shot]}
+        assets={[]}
         targetRuntime={180}
         projectId={1}
         onCreate={vi.fn()}
@@ -56,6 +74,7 @@ describe("ShotList", () => {
     render(
       <ShotList
         shots={[shot, { ...shot, id: 2, shot_number: 4, duration_seconds: 9, status: "Approved" }]}
+        assets={[]}
         targetRuntime={180}
         projectId={1}
         onCreate={vi.fn()}
@@ -75,6 +94,7 @@ describe("ShotList", () => {
     render(
       <ShotList
         shots={[shot, { ...shot, id: 2, shot_number: 4, purpose: "Second shot" }]}
+        assets={[]}
         targetRuntime={180}
         projectId={1}
         onCreate={vi.fn()}
@@ -98,6 +118,7 @@ describe("ShotList", () => {
     render(
       <ShotList
         shots={[shot]}
+        assets={[]}
         targetRuntime={180}
         projectId={1}
         onCreate={vi.fn()}
@@ -118,6 +139,7 @@ describe("ShotList", () => {
     render(
       <ShotList
         shots={[shot]}
+        assets={[]}
         targetRuntime={180}
         projectId={1}
         onCreate={vi.fn()}
@@ -132,5 +154,25 @@ describe("ShotList", () => {
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
 
     expect(onUpdate).toHaveBeenCalledWith(1, expect.objectContaining({ status: "Approved" }));
+  });
+
+  it("renders selected shot attached assets", () => {
+    render(
+      <ShotList
+        shots={[shot]}
+        assets={[attachedAsset]}
+        targetRuntime={180}
+        projectId={1}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onReorder={vi.fn()}
+        onPromptsApplied={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Attached assets")).toBeInTheDocument();
+    expect(screen.getByText("start.png")).toBeInTheDocument();
+    expect(screen.getByText("approved start frame")).toBeInTheDocument();
   });
 });

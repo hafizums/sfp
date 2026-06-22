@@ -136,11 +136,30 @@ export type Asset = {
   shot_id: number | null;
   asset_type: AssetType;
   filename_or_path: string;
+  original_filename: string;
+  stored_filename: string;
+  relative_path: string;
+  mime_type: string;
+  size_bytes: number;
+  preview_url: string;
+  download_url: string;
   notes: string;
   created_at: string;
 };
 
-export type AssetInput = Omit<Asset, "id" | "project_id" | "created_at">;
+export type AssetInput = {
+  shot_id: number | null;
+  asset_type: AssetType;
+  filename_or_path: string;
+  notes: string;
+};
+
+export type AssetUploadInput = {
+  asset_type: AssetType;
+  shot_id: number | null;
+  notes: string;
+  file: File;
+};
 
 export type AudioPlan = {
   id?: number;

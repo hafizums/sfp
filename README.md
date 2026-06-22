@@ -2,7 +2,7 @@
 
 Short Film Planner Studio is a private local web app for planning a 3-minute kids adventure AI short film from the first story idea through shot prompts, assets, audio notes, and a final readiness checklist.
 
-Most planning tools are manual, with optional backend-only OpenAI generators for story packages and Wan 2.2 prompt packages. The app does not include WaveSpeed, authentication, export, public sharing, payments, collaboration, or a full video editor.
+Most planning tools are manual, with optional backend-only OpenAI generators for story packages and Wan 2.2 prompt packages. Local asset upload and preview is available for images, videos, audio, subtitles, and conservative text assets. The app does not include WaveSpeed, authentication, export, public sharing, payments, collaboration, or a full video editor.
 
 ## Tech Stack
 
@@ -43,6 +43,8 @@ Backend configuration reads `DATABASE_URL` from the environment and defaults to 
 ```text
 sqlite:///./short_film_planner.db
 ```
+
+Asset uploads are stored locally. `ASSET_STORAGE_DIR` defaults to `uploads` inside the backend folder, and `MAX_ASSET_UPLOAD_BYTES` defaults to `52428800` bytes. Uploaded files are generated with server filenames and are ignored by Git.
 
 Frontend configuration reads `VITE_API_BASE_URL` and defaults to:
 
@@ -169,5 +171,23 @@ npm run build
 12. Confirm the shot prompt fields are populated.
 13. Use the individual prompt copy buttons and `Copy Wan 2.2 package`.
 14. Confirm no WaveSpeed API call happens; this prepares prompts only.
+
+## Manual Asset Upload Test
+
+1. Start the backend and frontend.
+2. Create a project.
+3. Create 2 shots.
+4. Open the `Assets` tab.
+5. Upload a `character_reference` image as a project-level asset.
+6. Upload a `start_frame` image for shot 1.
+7. Upload an `end_frame` image for shot 1.
+8. Upload a `generated_video` file for shot 1.
+9. Upload an `audio` or `subtitle` file if available.
+10. Confirm images, video, audio, and subtitle/text previews render where supported.
+11. Open the `Shots` tab and select shot 1.
+12. Confirm shot-level start/end/video/audio/subtitle assets appear in the shot detail area.
+13. Delete one uploaded asset and confirm the card disappears.
+14. Confirm the deleted file URL no longer loads.
+15. Run `git status --short` and confirm uploaded files under `backend/uploads/` are not tracked.
 
 WaveSpeed video generation is not enabled yet.

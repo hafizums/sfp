@@ -1,6 +1,7 @@
 import type {
   Asset,
   AssetInput,
+  AssetUploadInput,
   AudioPlan,
   Character,
   CharacterInput,
@@ -23,10 +24,12 @@ import type {
 } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8010/api";
+const API_ORIGIN = API_BASE.replace(/\/api\/?$/, "");
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const isFormData = options.body instanceof FormData;
   const response = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...options.headers },
+    headers: isFormData ? options.headers : { "Content-Type": "application/json", ...options.headers },
     ...options,
   });
   if (!response.ok) {
@@ -40,6 +43,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 const json = (body: unknown): RequestInit => ({ body: JSON.stringify(body) });
+
+const form = (body: FormData): RequestInit => ({ body });
 
 async function parseErrorMessage(response: Response): Promise<string> {
   const text = await response.text();
@@ -95,9 +100,23 @@ export const api = {
   listAssets: (projectId: number) => request<Asset[]>(`/projects/${projectId}/assets`),
   createAsset: (projectId: number, payload: AssetInput) =>
     request<Asset>(`/projects/${projectId}/assets`, { method: "POST", ...json(payload) }),
+  uploadAsset: (projectId: number, payload: AssetUploadInput) => {
+    const data = new FormData();
+    data.append("asset_type", payload.asset_type);
+    data.append("notes", payload.notes);
+    if (payload.shot_id !== null) {
+      data.append("shot_id", String(payload.shot_id));
+    }
+    data.append("file", payload.file);
+    return request<Asset>(`/projects/${projectId}/assets/upload`, { method: "POST", ...form(data) });
+  },
   updateAsset: (id: number, payload: Partial<AssetInput>) =>
     request<Asset>(`/assets/${id}`, { method: "PUT", ...json(payload) }),
   deleteAsset: (id: number) => request<void>(`/assets/${id}`, { method: "DELETE" }),
+  assetFileUrl: (asset: Pick<Asset, "preview_url" | "download_url">) => {
+    const path = asset.preview_url || asset.download_url;
+    return path ? `${API_ORIGIN}${path}` : "";
+  },
 
   getAudioPlan: (projectId: number) => request<AudioPlan>(`/projects/${projectId}/audio-plan`),
   saveAudioPlan: (projectId: number, payload: AudioPlan) =>

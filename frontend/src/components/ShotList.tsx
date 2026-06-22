@@ -2,8 +2,9 @@ import { ArrowDown, ArrowUp, Copy, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { buildWanPackage, plannedRuntime, progressFromShots, remainingRuntime } from "../planner";
-import { shotStatuses, type Shot, type ShotInput } from "../types";
+import { shotStatuses, type Asset, type Shot, type ShotInput } from "../types";
 import { AIShotPromptPanel } from "./AIShotPromptPanel";
+import { AssetPreviewCard } from "./AssetManager";
 
 const emptyShot: ShotInput = {
   scene_number: 1,
@@ -27,6 +28,7 @@ const emptyShot: ShotInput = {
 type Props = {
   projectId: number;
   shots: Shot[];
+  assets: Asset[];
   targetRuntime: number;
   onCreate: (shot: ShotInput) => Promise<void>;
   onUpdate: (id: number, shot: Partial<ShotInput>) => Promise<void>;
@@ -38,6 +40,7 @@ type Props = {
 export function ShotList({
   projectId,
   shots,
+  assets,
   targetRuntime,
   onCreate,
   onUpdate,
@@ -47,6 +50,7 @@ export function ShotList({
 }: Props) {
   const [selectedId, setSelectedId] = useState<number | null>(shots[0]?.id ?? null);
   const selected = shots.find((shot) => shot.id === selectedId) ?? shots[0];
+  const selectedAssets = selected ? assets.filter((asset) => asset.shot_id === selected.id) : [];
   const [draft, setDraft] = useState<ShotInput>(emptyShot);
 
   async function copyText(text: string) {
@@ -134,6 +138,7 @@ export function ShotList({
         {selected ? (
           <ShotDetail
             shot={selected}
+            assets={selectedAssets}
             onCopy={copyText}
             onDelete={onDelete}
             onUpdate={onUpdate}
@@ -148,11 +153,13 @@ export function ShotList({
 
 function ShotDetail({
   shot,
+  assets,
   onCopy,
   onUpdate,
   onDelete,
 }: {
   shot: Shot;
+  assets: Asset[];
   onCopy: (text: string) => Promise<void>;
   onUpdate: (id: number, shot: Partial<ShotInput>) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
@@ -240,6 +247,8 @@ function ShotDetail({
       <label>Action<textarea value={draft.action} onChange={(event) => field("action", event.target.value)} /></label>
       <label>Emotion<textarea value={draft.emotion} onChange={(event) => field("emotion", event.target.value)} /></label>
 
+      <ShotAssets assets={assets} shot={shot} />
+
       <PromptField label="Image prompt" value={draft.image_prompt} onChange={(value) => field("image_prompt", value)} onCopy={() => onCopy(draft.image_prompt)} />
       <PromptField label="Start frame prompt" value={draft.start_frame_prompt} onChange={(value) => field("start_frame_prompt", value)} onCopy={() => onCopy(draft.start_frame_prompt)} />
       <PromptField label="End frame prompt" value={draft.end_frame_prompt} onChange={(value) => field("end_frame_prompt", value)} onCopy={() => onCopy(draft.end_frame_prompt)} />
@@ -251,6 +260,26 @@ function ShotDetail({
       </button>
       <label>Notes<textarea value={draft.notes} onChange={(event) => field("notes", event.target.value)} /></label>
     </form>
+  );
+}
+
+function ShotAssets({ assets, shot }: { assets: Asset[]; shot: Shot }) {
+  const productionAssets = assets.filter((asset) =>
+    ["start_frame", "end_frame", "generated_video", "audio", "subtitle"].includes(asset.asset_type),
+  );
+  if (!productionAssets.length) {
+    return null;
+  }
+  return (
+    <section className="shot-assets" aria-label={`Shot ${shot.shot_number} attached assets`}>
+      <div>
+        <p className="eyebrow">Attached assets</p>
+        <h3>Shot {shot.shot_number} previews</h3>
+      </div>
+      <div className="asset-grid compact">
+        {productionAssets.map((asset) => <AssetPreviewCard key={asset.id} asset={asset} shot={shot} />)}
+      </div>
+    </section>
   );
 }
 

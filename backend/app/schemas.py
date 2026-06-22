@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 DEFAULT_SAFETY_RULES = [
     "No violence",
@@ -261,8 +261,23 @@ class AssetUpdate(BaseModel):
 class AssetRead(AssetBase, OrmModel):
     id: int
     project_id: int
+    original_filename: str = ""
+    stored_filename: str = ""
+    relative_path: str = ""
+    mime_type: str = ""
+    size_bytes: int = 0
     created_at: datetime
     updated_at: datetime
+
+    @computed_field
+    @property
+    def preview_url(self) -> str:
+        return f"/api/assets/{self.id}/file" if self.relative_path else ""
+
+    @computed_field
+    @property
+    def download_url(self) -> str:
+        return f"/api/assets/{self.id}/file" if self.relative_path else ""
 
 
 class AudioPlanBase(BaseModel):

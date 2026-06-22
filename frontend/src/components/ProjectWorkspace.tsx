@@ -3,9 +3,10 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { api } from "../api/client";
+import { AssetManager } from "./AssetManager";
 import { AIStoryPanel } from "./AIStoryPanel";
 import { ShotList } from "./ShotList";
-import { assetTypes, type Asset, type AssetInput, type AudioPlan, type Character, type CharacterInput, type ChecklistItem, type Location, type LocationInput, type Project, type ProjectInput, type Shot, type ShotInput, type StoryInterview, type StoryWorkspace } from "../types";
+import { type Asset, type AudioPlan, type Character, type CharacterInput, type ChecklistItem, type Location, type LocationInput, type Project, type ProjectInput, type Shot, type ShotInput, type StoryInterview, type StoryWorkspace } from "../types";
 
 const interviewLabels: Record<keyof StoryInterview, string> = {
   id: "id",
@@ -79,13 +80,6 @@ const emptyLocation: LocationInput = {
   continuity_prompt: "",
   negative_prompt: "",
   safety_notes: "",
-  notes: "",
-};
-
-const emptyAsset: AssetInput = {
-  shot_id: null,
-  asset_type: "other",
-  filename_or_path: "",
   notes: "",
 };
 
@@ -268,6 +262,7 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
         <ShotList
           projectId={project.id}
           shots={shots}
+          assets={assets}
           targetRuntime={project.target_runtime_seconds}
           onCreate={async (payload) => { await api.createShot(project.id, payload); await refreshShotsAndProject(); }}
           onUpdate={async (id, payload) => { await api.updateShot(id, payload); await refreshShotsAndProject(); }}
@@ -278,11 +273,11 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
       )}
 
       {tab === "Assets" && (
-        <AssetSection
+        <AssetManager
+          projectId={project.id}
           shots={shots}
           assets={assets}
-          onCreate={async (payload) => setAssets([await api.createAsset(project.id, payload), ...assets])}
-          onDelete={async (id) => { await api.deleteAsset(id); setAssets(assets.filter((item) => item.id !== id)); }}
+          onAssetsChange={setAssets}
         />
       )}
 
@@ -499,29 +494,5 @@ function LocationCard({ location, onUpdate, onDelete }: { location: Location; on
         <button className="danger" onClick={() => window.confirm(`Delete ${location.name}?`) && void onDelete(location.id)}><Trash2 size={16} /> Delete</button>
       </div>
     </article>
-  );
-}
-
-function AssetSection({ shots, assets, onCreate, onDelete }: { shots: Shot[]; assets: Asset[]; onCreate: (payload: AssetInput) => Promise<void>; onDelete: (id: number) => Promise<void> }) {
-  const [draft, setDraft] = useState<AssetInput>(emptyAsset);
-  return (
-    <section className="workspace-band">
-      <div className="section-heading compact"><h2>Asset tracking</h2></div>
-      <form className="asset-form" onSubmit={(event) => { event.preventDefault(); void onCreate(draft).then(() => setDraft(emptyAsset)); }}>
-        <label>Asset type<select value={draft.asset_type} onChange={(event) => setDraft({ ...draft, asset_type: event.target.value as AssetInput["asset_type"] })}>{assetTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
-        <label>Shot<select value={draft.shot_id ?? ""} onChange={(event) => setDraft({ ...draft, shot_id: event.target.value ? Number(event.target.value) : null })}><option value="">Project-level</option>{shots.map((shot) => <option key={shot.id} value={shot.id}>Shot {shot.shot_number}</option>)}</select></label>
-        <TextInput label="Filename or path" value={draft.filename_or_path} onChange={(value) => setDraft({ ...draft, filename_or_path: value })} />
-        <TextArea label="Notes" value={draft.notes} onChange={(value) => setDraft({ ...draft, notes: value })} />
-        <button className="primary" type="submit"><Plus size={16} /> Track asset</button>
-      </form>
-      <div className="resource-list">
-        {assets.map((asset) => (
-          <article key={asset.id} className="resource-card">
-            <strong>{asset.filename_or_path}</strong><span>{asset.asset_type}</span><p>{asset.notes}</p>
-            <button className="danger" onClick={() => void onDelete(asset.id)}><Trash2 size={16} /> Delete</button>
-          </article>
-        ))}
-      </div>
-    </section>
   );
 }
