@@ -1,9 +1,9 @@
-import { Check, Plus, Save, Trash2 } from "lucide-react";
+import { Check, Copy, Plus, Save, Trash2, Upload } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { api } from "../api/client";
-import { AssetManager } from "./AssetManager";
+import { AssetGrid, AssetManager } from "./AssetManager";
 import { AIStoryPanel } from "./AIStoryPanel";
 import { ProductionBiblePanel } from "./ProductionBiblePanel";
 import { ShotList } from "./ShotList";
@@ -266,7 +266,11 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
 
       {tab === "Characters" && (
         <CharacterSection
+          projectId={project.id}
           characters={characters}
+          assets={assets}
+          productionBible={productionBible}
+          onAssetsChange={setAssets}
           onCreate={async (payload) => setCharacters([...characters, await api.createCharacter(project.id, payload)])}
           onUpdate={async (id, payload) => {
             const updated = await api.updateCharacter(id, payload);
@@ -278,7 +282,11 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
 
       {tab === "Locations" && (
         <LocationSection
+          projectId={project.id}
           locations={locations}
+          assets={assets}
+          productionBible={productionBible}
+          onAssetsChange={setAssets}
           onCreate={async (payload) => setLocations([...locations, await api.createLocation(project.id, payload)])}
           onUpdate={async (id, payload) => {
             const updated = await api.updateLocation(id, payload);
@@ -413,17 +421,79 @@ function TextSection<T extends object>({
 }
 
 function CharacterSection({
+  projectId,
   characters,
+  assets,
+  productionBible,
+  onAssetsChange,
   onCreate,
   onUpdate,
   onDelete,
 }: {
+  projectId: number;
   characters: Character[];
+  assets: Asset[];
+  productionBible: ProductionBible | null;
+  onAssetsChange: (assets: Asset[]) => void;
   onCreate: (payload: CharacterInput) => Promise<void>;
   onUpdate: (id: number, payload: Partial<CharacterInput>) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
 }) {
   const [draft, setDraft] = useState<CharacterInput>(emptyCharacter);
+  const [assetFile, setAssetFile] = useState<File | null>(null);
+  const [assetNotes, setAssetNotes] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [copiedDraftPrompt, setCopiedDraftPrompt] = useState(false);
+  const [copiedCombinedPrompt, setCopiedCombinedPrompt] = useState(false);
+  const draftPrompt = buildCharacterPrompt(draft, productionBible);
+  const combinedPrompt = characters.map((character) => buildCharacterPrompt(character, productionBible)).filter(Boolean).join("\n\n---\n\n");
+  const characterAssets = assets.filter((asset) => asset.asset_type === "character_reference");
+
+  async function copyDraftPrompt() {
+    await navigator.clipboard.writeText(draftPrompt);
+    setCopiedDraftPrompt(true);
+    window.setTimeout(() => setCopiedDraftPrompt(false), 1500);
+  }
+
+  async function copyCombinedPrompt() {
+    await navigator.clipboard.writeText(combinedPrompt);
+    setCopiedCombinedPrompt(true);
+    window.setTimeout(() => setCopiedCombinedPrompt(false), 1500);
+  }
+
+  async function uploadCharacterAsset() {
+    if (!assetFile) {
+      setUploadError("Choose a character asset file before uploading.");
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const asset = await api.uploadAsset(projectId, {
+        asset_type: "character_reference",
+        shot_id: null,
+        notes: assetNotes,
+        file: assetFile,
+      });
+      onAssetsChange([asset, ...assets]);
+      setAssetFile(null);
+      setAssetNotes("");
+    } catch (caught) {
+      setUploadError(caught instanceof Error ? caught.message : "Unable to upload character asset.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function deleteCharacterAsset(asset: Asset) {
+    if (!window.confirm(`Delete "${asset.original_filename || asset.filename_or_path || asset.stored_filename}" and remove its local file if uploaded?`)) {
+      return;
+    }
+    await api.deleteAsset(asset.id);
+    onAssetsChange(assets.filter((item) => item.id !== asset.id));
+  }
+
   return (
     <section className="workspace-band">
       <div className="section-heading compact">
@@ -446,17 +516,190 @@ function CharacterSection({
         <TextArea label="Notes" value={draft.notes} onChange={(value) => setDraft({ ...draft, notes: value })} />
         <button className="primary" type="submit"><Plus size={16} /> Add character</button>
       </form>
+
+      <section className="prompt-group" aria-label="Character draft prompt">
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Character prompt</p>
+            <h3>Draft copy prompt</h3>
+          </div>
+          {copiedDraftPrompt ? <span className="success-pill" role="status">Character prompt copied</span> : null}
+        </div>
+        <label>
+          Prompt
+          <textarea value={draftPrompt} readOnly placeholder="Fill the character fields to build a prompt." />
+        </label>
+        <button type="button" className="ghost" onClick={() => void copyDraftPrompt()} disabled={!draftPrompt.trim()}>
+          <Copy size={16} /> {copiedDraftPrompt ? "Copied prompt" : "Copy character prompt"}
+        </button>
+      </section>
+
+      <section className="prompt-group" aria-label="Combined character prompt">
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Combined prompt</p>
+            <h3>All saved characters</h3>
+          </div>
+          {copiedCombinedPrompt ? <span className="success-pill" role="status">Combined prompt copied</span> : null}
+        </div>
+        <label>
+          Combined prompt
+          <textarea value={combinedPrompt} readOnly placeholder="Add characters to build a combined prompt." />
+        </label>
+        <button type="button" className="ghost" onClick={() => void copyCombinedPrompt()} disabled={!combinedPrompt.trim()}>
+          <Copy size={16} /> {copiedCombinedPrompt ? "Copied combined prompt" : "Copy combined prompt"}
+        </button>
+      </section>
+
+      <form className="asset-upload-form" aria-label="Character asset upload" onSubmit={(event) => { event.preventDefault(); void uploadCharacterAsset(); }}>
+        <label>Character asset<input type="file" onChange={(event) => setAssetFile(event.target.files?.[0] ?? null)} /></label>
+        <label>Notes<textarea value={assetNotes} onChange={(event) => setAssetNotes(event.target.value)} placeholder="Character name, pose, outfit, reference use" /></label>
+        <button className="primary" type="submit" disabled={uploading}><Upload size={16} /> {uploading ? "Uploading" : "Upload character asset"}</button>
+      </form>
+      {uploadError ? <div className="app-error">{uploadError}</div> : null}
+
+      <AssetGrid assets={characterAssets} shots={[]} onDelete={(asset) => void deleteCharacterAsset(asset)} />
+
       <div className="resource-list">
         {characters.map((character) => (
-          <CharacterCard key={character.id} character={character} onUpdate={onUpdate} onDelete={onDelete} />
+          <CharacterCard
+            key={character.id}
+            projectId={projectId}
+            character={character}
+            assets={assets}
+            productionBible={productionBible}
+            onAssetsChange={onAssetsChange}
+            onUpdate={onUpdate}
+            onDelete={onDelete}
+          />
         ))}
       </div>
     </section>
   );
 }
 
-function CharacterCard({ character, onUpdate, onDelete }: { character: Character; onUpdate: (id: number, payload: Partial<CharacterInput>) => Promise<void>; onDelete: (id: number) => Promise<void> }) {
+function buildCharacterPrompt(character: CharacterInput, productionBible: ProductionBible | null): string {
+  const characterPrompt = [
+    character.name ? `Character name: ${character.name}` : "",
+    character.role ? `Role: ${character.role}` : "",
+    character.age ? `Age: ${character.age}` : "",
+    character.appearance ? `Appearance: ${character.appearance}` : "",
+    character.outfit ? `Outfit: ${character.outfit}` : "",
+    character.personality ? `Personality: ${character.personality}` : "",
+    character.voice_style ? `Voice style: ${character.voice_style}` : "",
+    character.continuity_prompt ? `Continuity prompt: ${character.continuity_prompt}` : "",
+    character.negative_prompt ? `Negative prompt: ${character.negative_prompt}` : "",
+    character.notes ? `Notes: ${character.notes}` : "",
+  ].filter(Boolean).join("\n");
+  return appendProductionBibleContext(characterPrompt, productionBible);
+}
+
+function appendProductionBibleContext(basePrompt: string, productionBible: ProductionBible | null): string {
+  const bibleContext = buildProductionBiblePromptContext(productionBible);
+  return [basePrompt, bibleContext].filter(Boolean).join("\n\n");
+}
+
+function buildProductionBiblePromptContext(productionBible: ProductionBible | null): string {
+  if (!productionBible) {
+    return "";
+  }
+  const lines = [
+    productionBible.visual_style ? `Visual style: ${productionBible.visual_style}` : "",
+    productionBible.color_palette ? `Color palette: ${productionBible.color_palette}` : "",
+    productionBible.lighting_style ? `Lighting style: ${productionBible.lighting_style}` : "",
+    productionBible.camera_language ? `Camera language: ${productionBible.camera_language}` : "",
+    productionBible.character_consistency_rules ? `Character consistency rules: ${productionBible.character_consistency_rules}` : "",
+    productionBible.location_consistency_rules ? `Location consistency rules: ${productionBible.location_consistency_rules}` : "",
+    productionBible.prop_consistency_rules ? `Prop consistency rules: ${productionBible.prop_consistency_rules}` : "",
+    productionBible.safety_rules ? `Safety rules: ${productionBible.safety_rules}` : "",
+    productionBible.negative_prompt_rules ? `Negative prompt rules: ${productionBible.negative_prompt_rules}` : "",
+    productionBible.final_delivery_specs ? `Final delivery specs: ${productionBible.final_delivery_specs}` : "",
+  ].filter(Boolean);
+  return lines.length ? `Production Bible context:\n${lines.join("\n")}` : "";
+}
+
+function characterAssetTag(characterId: number): string {
+  return `character_id:${characterId}`;
+}
+
+function locationAssetTag(locationId: number): string {
+  return `location_id:${locationId}`;
+}
+
+function taggedAssetNotes(tag: string, notes: string): string {
+  return `[${tag}]${notes.trim() ? ` ${notes.trim()}` : ""}`;
+}
+
+function assetHasTag(asset: Asset, tag: string): boolean {
+  return asset.notes.includes(`[${tag}]`);
+}
+
+function CharacterCard({
+  projectId,
+  character,
+  assets,
+  productionBible,
+  onAssetsChange,
+  onUpdate,
+  onDelete,
+}: {
+  projectId: number;
+  character: Character;
+  assets: Asset[];
+  productionBible: ProductionBible | null;
+  onAssetsChange: (assets: Asset[]) => void;
+  onUpdate: (id: number, payload: Partial<CharacterInput>) => Promise<void>;
+  onDelete: (id: number) => Promise<void>;
+}) {
   const [draft, setDraft] = useState<CharacterInput>(character);
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageNotes, setImageNotes] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const prompt = buildCharacterPrompt(draft, productionBible);
+  const assignedAssets = assets.filter((asset) =>
+    asset.asset_type === "character_reference" && assetHasTag(asset, characterAssetTag(character.id)),
+  );
+
+  async function copyPrompt() {
+    await navigator.clipboard.writeText(prompt);
+    setCopiedPrompt(true);
+    window.setTimeout(() => setCopiedPrompt(false), 1500);
+  }
+
+  async function uploadCharacterImage() {
+    if (!imageFile) {
+      setImageError("Choose an image before uploading.");
+      return;
+    }
+    setUploadingImage(true);
+    setImageError(null);
+    try {
+      const asset = await api.uploadAsset(projectId, {
+        asset_type: "character_reference",
+        shot_id: null,
+        notes: taggedAssetNotes(characterAssetTag(character.id), imageNotes || draft.name),
+        file: imageFile,
+      });
+      onAssetsChange([asset, ...assets]);
+      setImageFile(null);
+      setImageNotes("");
+    } catch (caught) {
+      setImageError(caught instanceof Error ? caught.message : "Unable to upload character image.");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
+  async function deleteCharacterImage(asset: Asset) {
+    if (!window.confirm(`Delete "${asset.original_filename || asset.filename_or_path || asset.stored_filename}" and remove its local file if uploaded?`)) {
+      return;
+    }
+    await api.deleteAsset(asset.id);
+    onAssetsChange(assets.filter((item) => item.id !== asset.id));
+  }
+
   return (
     <article className="resource-card editable">
       <div className="form-grid">
@@ -471,7 +714,19 @@ function CharacterCard({ character, onUpdate, onDelete }: { character: Character
       <TextArea label="Continuity prompt" value={draft.continuity_prompt} onChange={(value) => setDraft({ ...draft, continuity_prompt: value })} />
       <TextArea label="Negative prompt" value={draft.negative_prompt} onChange={(value) => setDraft({ ...draft, negative_prompt: value })} />
       <TextArea label="Notes" value={draft.notes} onChange={(value) => setDraft({ ...draft, notes: value })} />
+      <label>
+        Character prompt
+        <textarea value={prompt} readOnly />
+      </label>
+      <form className="asset-upload-form" aria-label={`Upload image for ${character.name}`} onSubmit={(event) => { event.preventDefault(); void uploadCharacterImage(); }}>
+        <label>Character image<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setImageFile(event.target.files?.[0] ?? null)} /></label>
+        <label>Image notes<textarea value={imageNotes} onChange={(event) => setImageNotes(event.target.value)} placeholder="Pose, expression, outfit, angle" /></label>
+        <button className="ghost" type="submit" disabled={uploadingImage}><Upload size={16} /> {uploadingImage ? "Uploading" : "Upload image"}</button>
+      </form>
+      {imageError ? <div className="app-error">{imageError}</div> : null}
+      <AssetGrid assets={assignedAssets} shots={[]} onDelete={(asset) => void deleteCharacterImage(asset)} />
       <div className="row-actions">
+        <button className="ghost" type="button" onClick={() => void copyPrompt()} disabled={!prompt.trim()}><Copy size={16} /> {copiedPrompt ? "Copied prompt" : "Copy prompt"}</button>
         <button className="ghost" onClick={() => void onUpdate(character.id, draft)}><Check size={16} /> Save</button>
         <button className="danger" onClick={() => window.confirm(`Delete ${character.name}?`) && void onDelete(character.id)}><Trash2 size={16} /> Delete</button>
       </div>
@@ -480,17 +735,79 @@ function CharacterCard({ character, onUpdate, onDelete }: { character: Character
 }
 
 function LocationSection({
+  projectId,
   locations,
+  assets,
+  productionBible,
+  onAssetsChange,
   onCreate,
   onUpdate,
   onDelete,
 }: {
+  projectId: number;
   locations: Location[];
+  assets: Asset[];
+  productionBible: ProductionBible | null;
+  onAssetsChange: (assets: Asset[]) => void;
   onCreate: (payload: LocationInput) => Promise<void>;
   onUpdate: (id: number, payload: Partial<LocationInput>) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
 }) {
   const [draft, setDraft] = useState<LocationInput>(emptyLocation);
+  const [assetFile, setAssetFile] = useState<File | null>(null);
+  const [assetNotes, setAssetNotes] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [copiedDraftPrompt, setCopiedDraftPrompt] = useState(false);
+  const [copiedCombinedPrompt, setCopiedCombinedPrompt] = useState(false);
+  const draftPrompt = buildLocationPrompt(draft, productionBible);
+  const combinedPrompt = locations.map((location) => buildLocationPrompt(location, productionBible)).filter(Boolean).join("\n\n---\n\n");
+  const locationAssets = assets.filter((asset) => asset.asset_type === "location_reference");
+
+  async function copyDraftPrompt() {
+    await navigator.clipboard.writeText(draftPrompt);
+    setCopiedDraftPrompt(true);
+    window.setTimeout(() => setCopiedDraftPrompt(false), 1500);
+  }
+
+  async function copyCombinedPrompt() {
+    await navigator.clipboard.writeText(combinedPrompt);
+    setCopiedCombinedPrompt(true);
+    window.setTimeout(() => setCopiedCombinedPrompt(false), 1500);
+  }
+
+  async function uploadLocationAsset() {
+    if (!assetFile) {
+      setUploadError("Choose a location asset file before uploading.");
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const asset = await api.uploadAsset(projectId, {
+        asset_type: "location_reference",
+        shot_id: null,
+        notes: assetNotes,
+        file: assetFile,
+      });
+      onAssetsChange([asset, ...assets]);
+      setAssetFile(null);
+      setAssetNotes("");
+    } catch (caught) {
+      setUploadError(caught instanceof Error ? caught.message : "Unable to upload location asset.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function deleteLocationAsset(asset: Asset) {
+    if (!window.confirm(`Delete "${asset.original_filename || asset.filename_or_path || asset.stored_filename}" and remove its local file if uploaded?`)) {
+      return;
+    }
+    await api.deleteAsset(asset.id);
+    onAssetsChange(assets.filter((item) => item.id !== asset.id));
+  }
+
   return (
     <section className="workspace-band">
       <div className="section-heading compact">
@@ -512,17 +829,149 @@ function LocationSection({
         <TextArea label="Notes" value={draft.notes} onChange={(value) => setDraft({ ...draft, notes: value })} />
         <button className="primary" type="submit"><Plus size={16} /> Add location</button>
       </form>
+
+      <section className="prompt-group" aria-label="Location draft prompt">
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Location prompt</p>
+            <h3>Draft copy prompt</h3>
+          </div>
+          {copiedDraftPrompt ? <span className="success-pill" role="status">Location prompt copied</span> : null}
+        </div>
+        <label>
+          Prompt
+          <textarea value={draftPrompt} readOnly placeholder="Fill the location fields to build a prompt." />
+        </label>
+        <button type="button" className="ghost" onClick={() => void copyDraftPrompt()} disabled={!draftPrompt.trim()}>
+          <Copy size={16} /> {copiedDraftPrompt ? "Copied prompt" : "Copy location prompt"}
+        </button>
+      </section>
+
+      <section className="prompt-group" aria-label="Combined location prompt">
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Combined prompt</p>
+            <h3>All saved locations</h3>
+          </div>
+          {copiedCombinedPrompt ? <span className="success-pill" role="status">Combined location prompt copied</span> : null}
+        </div>
+        <label>
+          Combined prompt
+          <textarea value={combinedPrompt} readOnly placeholder="Add locations to build a combined prompt." />
+        </label>
+        <button type="button" className="ghost" onClick={() => void copyCombinedPrompt()} disabled={!combinedPrompt.trim()}>
+          <Copy size={16} /> {copiedCombinedPrompt ? "Copied combined prompt" : "Copy combined prompt"}
+        </button>
+      </section>
+
+      <form className="asset-upload-form" aria-label="Location asset upload" onSubmit={(event) => { event.preventDefault(); void uploadLocationAsset(); }}>
+        <label>Location asset<input type="file" onChange={(event) => setAssetFile(event.target.files?.[0] ?? null)} /></label>
+        <label>Notes<textarea value={assetNotes} onChange={(event) => setAssetNotes(event.target.value)} placeholder="Location name, angle, mood, reference use" /></label>
+        <button className="primary" type="submit" disabled={uploading}><Upload size={16} /> {uploading ? "Uploading" : "Upload location asset"}</button>
+      </form>
+      {uploadError ? <div className="app-error">{uploadError}</div> : null}
+
+      <AssetGrid assets={locationAssets} shots={[]} onDelete={(asset) => void deleteLocationAsset(asset)} />
+
       <div className="resource-list">
         {locations.map((location) => (
-          <LocationCard key={location.id} location={location} onUpdate={onUpdate} onDelete={onDelete} />
+          <LocationCard
+            key={location.id}
+            projectId={projectId}
+            location={location}
+            assets={assets}
+            productionBible={productionBible}
+            onAssetsChange={onAssetsChange}
+            onUpdate={onUpdate}
+            onDelete={onDelete}
+          />
         ))}
       </div>
     </section>
   );
 }
 
-function LocationCard({ location, onUpdate, onDelete }: { location: Location; onUpdate: (id: number, payload: Partial<LocationInput>) => Promise<void>; onDelete: (id: number) => Promise<void> }) {
+function buildLocationPrompt(location: LocationInput, productionBible: ProductionBible | null): string {
+  const locationPrompt = [
+    location.name ? `Location name: ${location.name}` : "",
+    location.description ? `Description: ${location.description}` : "",
+    location.mood ? `Mood: ${location.mood}` : "",
+    location.lighting ? `Lighting: ${location.lighting}` : "",
+    location.color_palette ? `Color palette: ${location.color_palette}` : "",
+    location.continuity_prompt ? `Continuity prompt: ${location.continuity_prompt}` : "",
+    location.negative_prompt ? `Negative prompt: ${location.negative_prompt}` : "",
+    location.safety_notes ? `Safety notes: ${location.safety_notes}` : "",
+    location.notes ? `Notes: ${location.notes}` : "",
+  ].filter(Boolean).join("\n");
+  return appendProductionBibleContext(locationPrompt, productionBible);
+}
+
+function LocationCard({
+  projectId,
+  location,
+  assets,
+  productionBible,
+  onAssetsChange,
+  onUpdate,
+  onDelete,
+}: {
+  projectId: number;
+  location: Location;
+  assets: Asset[];
+  productionBible: ProductionBible | null;
+  onAssetsChange: (assets: Asset[]) => void;
+  onUpdate: (id: number, payload: Partial<LocationInput>) => Promise<void>;
+  onDelete: (id: number) => Promise<void>;
+}) {
   const [draft, setDraft] = useState<LocationInput>(location);
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageNotes, setImageNotes] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const prompt = buildLocationPrompt(draft, productionBible);
+  const assignedAssets = assets.filter((asset) =>
+    asset.asset_type === "location_reference" && assetHasTag(asset, locationAssetTag(location.id)),
+  );
+
+  async function copyPrompt() {
+    await navigator.clipboard.writeText(prompt);
+    setCopiedPrompt(true);
+    window.setTimeout(() => setCopiedPrompt(false), 1500);
+  }
+
+  async function uploadLocationImage() {
+    if (!imageFile) {
+      setImageError("Choose an image before uploading.");
+      return;
+    }
+    setUploadingImage(true);
+    setImageError(null);
+    try {
+      const asset = await api.uploadAsset(projectId, {
+        asset_type: "location_reference",
+        shot_id: null,
+        notes: taggedAssetNotes(locationAssetTag(location.id), imageNotes || draft.name),
+        file: imageFile,
+      });
+      onAssetsChange([asset, ...assets]);
+      setImageFile(null);
+      setImageNotes("");
+    } catch (caught) {
+      setImageError(caught instanceof Error ? caught.message : "Unable to upload location image.");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
+  async function deleteLocationImage(asset: Asset) {
+    if (!window.confirm(`Delete "${asset.original_filename || asset.filename_or_path || asset.stored_filename}" and remove its local file if uploaded?`)) {
+      return;
+    }
+    await api.deleteAsset(asset.id);
+    onAssetsChange(assets.filter((item) => item.id !== asset.id));
+  }
+
   return (
     <article className="resource-card editable">
       <div className="form-grid">
@@ -536,7 +985,19 @@ function LocationCard({ location, onUpdate, onDelete }: { location: Location; on
       <TextArea label="Negative prompt" value={draft.negative_prompt} onChange={(value) => setDraft({ ...draft, negative_prompt: value })} />
       <TextArea label="Safety notes" value={draft.safety_notes} onChange={(value) => setDraft({ ...draft, safety_notes: value })} />
       <TextArea label="Notes" value={draft.notes} onChange={(value) => setDraft({ ...draft, notes: value })} />
+      <label>
+        Location prompt
+        <textarea value={prompt} readOnly />
+      </label>
+      <form className="asset-upload-form" aria-label={`Upload image for ${location.name}`} onSubmit={(event) => { event.preventDefault(); void uploadLocationImage(); }}>
+        <label>Location image<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setImageFile(event.target.files?.[0] ?? null)} /></label>
+        <label>Image notes<textarea value={imageNotes} onChange={(event) => setImageNotes(event.target.value)} placeholder="Angle, lighting, mood, reference use" /></label>
+        <button className="ghost" type="submit" disabled={uploadingImage}><Upload size={16} /> {uploadingImage ? "Uploading" : "Upload image"}</button>
+      </form>
+      {imageError ? <div className="app-error">{imageError}</div> : null}
+      <AssetGrid assets={assignedAssets} shots={[]} onDelete={(asset) => void deleteLocationImage(asset)} />
       <div className="row-actions">
+        <button className="ghost" type="button" onClick={() => void copyPrompt()} disabled={!prompt.trim()}><Copy size={16} /> {copiedPrompt ? "Copied prompt" : "Copy prompt"}</button>
         <button className="ghost" onClick={() => void onUpdate(location.id, draft)}><Check size={16} /> Save</button>
         <button className="danger" onClick={() => window.confirm(`Delete ${location.name}?`) && void onDelete(location.id)}><Trash2 size={16} /> Delete</button>
       </div>
