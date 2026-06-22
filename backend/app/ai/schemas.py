@@ -94,3 +94,34 @@ class StoryPackageApplyResponse(BaseModel):
     created_characters: int = 0
     created_locations: int = 0
     created_shots: int = 0
+
+
+class GeneratedShotPromptPackage(BaseModel):
+    shot_id: int = Field(..., ge=1)
+    shot_number: int = Field(..., ge=1)
+    image_prompt: str = Field(..., min_length=1)
+    start_frame_prompt: str = Field(..., min_length=1)
+    end_frame_prompt: str = Field(..., min_length=1)
+    video_prompt: str = Field(..., min_length=1)
+    negative_prompt: str = Field(..., min_length=1)
+    notes: str = ""
+
+
+class GeneratedShotPromptPreview(BaseModel):
+    packages: list[GeneratedShotPromptPackage] = Field(default_factory=list, min_length=1)
+
+
+class ShotPromptPreviewRequest(BaseModel):
+    shot_ids: list[int] | None = None
+    overwrite: bool = False
+
+
+class ShotPromptApplyRequest(BaseModel):
+    packages: list[GeneratedShotPromptPackage] = Field(..., min_length=1)
+    overwrite: bool = False
+
+
+class ShotPromptApplyResponse(BaseModel):
+    applied: list[str] = Field(default_factory=list)
+    skipped: list[str] = Field(default_factory=list)
+    updated_shots: int = 0

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { buildWanPackage, plannedRuntime, progressFromShots, remainingRuntime } from "../planner";
 import { shotStatuses, type Shot, type ShotInput } from "../types";
+import { AIShotPromptPanel } from "./AIShotPromptPanel";
 
 const emptyShot: ShotInput = {
   scene_number: 1,
@@ -24,15 +25,26 @@ const emptyShot: ShotInput = {
 };
 
 type Props = {
+  projectId: number;
   shots: Shot[];
   targetRuntime: number;
   onCreate: (shot: ShotInput) => Promise<void>;
   onUpdate: (id: number, shot: Partial<ShotInput>) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   onReorder: (shotIds: number[]) => Promise<void>;
+  onPromptsApplied: () => Promise<void>;
 };
 
-export function ShotList({ shots, targetRuntime, onCreate, onUpdate, onDelete, onReorder }: Props) {
+export function ShotList({
+  projectId,
+  shots,
+  targetRuntime,
+  onCreate,
+  onUpdate,
+  onDelete,
+  onReorder,
+  onPromptsApplied,
+}: Props) {
   const [selectedId, setSelectedId] = useState<number | null>(shots[0]?.id ?? null);
   const selected = shots.find((shot) => shot.id === selectedId) ?? shots[0];
   const [draft, setDraft] = useState<ShotInput>(emptyShot);
@@ -88,6 +100,13 @@ export function ShotList({ shots, targetRuntime, onCreate, onUpdate, onDelete, o
         </label>
         <button className="primary" type="submit"><Plus size={16} /> Add shot</button>
       </form>
+
+      <AIShotPromptPanel
+        projectId={projectId}
+        shots={shots}
+        selectedShotId={selected?.id ?? null}
+        onApplied={onPromptsApplied}
+      />
 
       <div className="shot-layout">
         <div className="shot-table" role="list">

@@ -2,7 +2,7 @@
 
 Short Film Planner Studio is a private local web app for planning a 3-minute kids adventure AI short film from the first story idea through shot prompts, assets, audio notes, and a final readiness checklist.
 
-Most planning tools are manual, with one optional backend-only OpenAI story package generator. The app does not include WaveSpeed, authentication, export, public sharing, payments, collaboration, or a full video editor.
+Most planning tools are manual, with optional backend-only OpenAI generators for story packages and Wan 2.2 prompt packages. The app does not include WaveSpeed, authentication, export, public sharing, payments, collaboration, or a full video editor.
 
 ## Tech Stack
 
@@ -50,7 +50,7 @@ Frontend configuration reads `VITE_API_BASE_URL` and defaults to:
 http://127.0.0.1:8010/api
 ```
 
-The AI story package generator is backend-only. Set `OPENAI_API_KEY` in the backend environment before using it. `OPENAI_MODEL_STORY` defaults to `gpt-5-mini`, and `OPENAI_STORY_TIMEOUT_SECONDS` defaults to `120`.
+The AI generators are backend-only. Set `OPENAI_API_KEY` in the backend environment before using them. `OPENAI_MODEL_STORY` and `OPENAI_MODEL_PROMPTS` default to `gpt-5-mini`; `OPENAI_STORY_TIMEOUT_SECONDS` and `OPENAI_PROMPT_TIMEOUT_SECONDS` default to `120`.
 
 ## Backend Setup
 
@@ -153,4 +153,21 @@ npm run build
 9. Apply selected sections.
 10. Confirm the story workspace, characters, locations, optional shots, and audio plan updated as expected.
 
-WaveSpeed video generation and final Wan 2.2 prompt generation are not enabled yet.
+## Manual Wan 2.2 Prompt Package Test
+
+1. Set `OPENAI_API_KEY` in the backend shell.
+2. Start the backend and frontend.
+3. Create a project.
+4. Fill the story interview.
+5. Generate and apply a story package, or manually create storyboard shots.
+6. Open the `Shots` tab.
+7. Select one shot or choose `All shots`.
+8. Click `Generate Wan 2.2 Prompts`.
+9. Review the image, start frame, end frame, video, and negative prompts.
+10. Leave `Allow overwrite` unchecked to protect manual prompt fields.
+11. Apply selected prompt packages.
+12. Confirm the shot prompt fields are populated.
+13. Use the individual prompt copy buttons and `Copy Wan 2.2 package`.
+14. Confirm no WaveSpeed API call happens; this prepares prompts only.
+
+WaveSpeed video generation is not enabled yet.

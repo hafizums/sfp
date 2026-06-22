@@ -266,12 +266,14 @@ export function ProjectWorkspace({ project, onRefreshProject }: Props) {
 
       {tab === "Shots" && (
         <ShotList
+          projectId={project.id}
           shots={shots}
           targetRuntime={project.target_runtime_seconds}
           onCreate={async (payload) => { await api.createShot(project.id, payload); await refreshShotsAndProject(); }}
           onUpdate={async (id, payload) => { await api.updateShot(id, payload); await refreshShotsAndProject(); }}
           onDelete={async (id) => { await api.deleteShot(id); await refreshShotsAndProject(); }}
           onReorder={async (ids) => { setShots(await api.reorderShots(project.id, ids)); await onRefreshProject(); }}
+          onPromptsApplied={refreshShotsAndProject}
         />
       )}
 

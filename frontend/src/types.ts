@@ -215,3 +215,30 @@ export type StoryPackageApplyResponse = {
   created_locations: number;
   created_shots: number;
 };
+
+export type GeneratedShotPromptPackage = {
+  shot_id: number;
+  shot_number: number;
+  image_prompt: string;
+  start_frame_prompt: string;
+  end_frame_prompt: string;
+  video_prompt: string;
+  negative_prompt: string;
+  notes: string;
+};
+
+export type ShotPromptPreviewRequest = {
+  shot_ids?: number[] | null;
+  overwrite?: boolean;
+};
+
+export type ShotPromptApplyRequest = {
+  packages: GeneratedShotPromptPackage[];
+  overwrite: boolean;
+};
+
+export type ShotPromptApplyResponse = {
+  applied: string[];
+  skipped: string[];
+  updated_shots: number;
+};

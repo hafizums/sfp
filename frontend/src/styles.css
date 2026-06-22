@@ -558,6 +558,23 @@ button:disabled {
   white-space: pre-wrap;
 }
 
+.shot-prompt-preview {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.prompt-preview-field {
+  display: grid;
+  gap: 4px;
+  border-top: 1px solid #dbe4df;
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.prompt-preview-field strong {
+  color: #263236;
+  font-size: 12px;
+}
+
 .suggestion-strip,
 .apply-controls {
   display: flex;

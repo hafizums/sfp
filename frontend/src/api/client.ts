@@ -6,12 +6,16 @@ import type {
   CharacterInput,
   ChecklistItem,
   GeneratedStoryPackage,
+  GeneratedShotPromptPackage,
   Location,
   LocationInput,
   Project,
   ProjectInput,
   Shot,
   ShotInput,
+  ShotPromptApplyRequest,
+  ShotPromptApplyResponse,
+  ShotPromptPreviewRequest,
   StoryPackageApplyRequest,
   StoryPackageApplyResponse,
   StoryInterview,
@@ -106,6 +110,16 @@ export const api = {
     request<GeneratedStoryPackage>(`/projects/${projectId}/ai/story-package/preview`, { method: "POST" }),
   applyStoryPackage: (projectId: number, payload: StoryPackageApplyRequest) =>
     request<StoryPackageApplyResponse>(`/projects/${projectId}/ai/story-package/apply`, {
+      method: "POST",
+      ...json(payload),
+    }),
+  previewShotPrompts: (projectId: number, payload: ShotPromptPreviewRequest) =>
+    request<GeneratedShotPromptPackage[]>(`/projects/${projectId}/ai/shot-prompts/preview`, {
+      method: "POST",
+      ...json(payload),
+    }),
+  applyShotPrompts: (projectId: number, payload: ShotPromptApplyRequest) =>
+    request<ShotPromptApplyResponse>(`/projects/${projectId}/ai/shot-prompts/apply`, {
       method: "POST",
       ...json(payload),
     }),

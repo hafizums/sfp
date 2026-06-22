@@ -36,10 +36,12 @@ describe("ShotList", () => {
       <ShotList
         shots={[shot]}
         targetRuntime={180}
+        projectId={1}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onDelete={vi.fn()}
         onReorder={vi.fn()}
+        onPromptsApplied={vi.fn()}
       />,
     );
 
@@ -55,10 +57,12 @@ describe("ShotList", () => {
       <ShotList
         shots={[shot, { ...shot, id: 2, shot_number: 4, duration_seconds: 9, status: "Approved" }]}
         targetRuntime={180}
+        projectId={1}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onDelete={vi.fn()}
         onReorder={vi.fn()}
+        onPromptsApplied={vi.fn()}
       />,
     );
 
@@ -72,10 +76,12 @@ describe("ShotList", () => {
       <ShotList
         shots={[shot, { ...shot, id: 2, shot_number: 4, purpose: "Second shot" }]}
         targetRuntime={180}
+        projectId={1}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onDelete={vi.fn()}
         onReorder={onReorder}
+        onPromptsApplied={vi.fn()}
       />,
     );
 
@@ -93,10 +99,12 @@ describe("ShotList", () => {
       <ShotList
         shots={[shot]}
         targetRuntime={180}
+        projectId={1}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onDelete={vi.fn()}
         onReorder={vi.fn()}
+        onPromptsApplied={vi.fn()}
       />,
     );
 
@@ -111,10 +119,12 @@ describe("ShotList", () => {
       <ShotList
         shots={[shot]}
         targetRuntime={180}
+        projectId={1}
         onCreate={vi.fn()}
         onUpdate={onUpdate}
         onDelete={vi.fn()}
         onReorder={vi.fn()}
+        onPromptsApplied={vi.fn()}
       />,
     );
 
